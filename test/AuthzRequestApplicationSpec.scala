@@ -12,7 +12,7 @@ import controllers.utils.AuthzErrors._
 import controllers.client._
 
 @RunWith(classOf[JUnitRunner])
-class AuthorizationRequestSpec extends Specification {
+class AuthzRequestApplicationSpec extends Specification {
 
   "Application" should {
 
@@ -27,7 +27,7 @@ class AuthorizationRequestSpec extends Specification {
       status(resp) must equalTo(400)
       (contentAsJson(resp) \ "error") must equalTo(JsString(invalid_request))
     }
-    
+
     "send 400 if response_type is wrong" in new WithApplication {
       val resp = route(FakeRequest(GET, "/oauth/authorize?client_id=a&response_type=eww")).get
       status(resp) must equalTo(400)
