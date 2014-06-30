@@ -79,6 +79,14 @@ object utils {
     val server_error = "server_error"
     val temporarily_unavailable = "temporarily_unavailable"
   }
+  
+  object AccessTokenResponse {
+    val access_token = "access_token"
+    val refresh_token = "refresh_token"  
+    val scope = "scope"
+    val expires_in = "expires_in"
+    val token_type = "token_type"
+  }
 
   object TokenType {
     val bearer = "bearer"
@@ -131,7 +139,7 @@ trait Sha256PasswordEncoder extends PasswordEncoder {
 trait AuthzResponse
 case class AuthzCodeResponse(code: String, state: Option[String]) extends AuthzResponse
 case class ImplicitResponse(access_token: String, token_type: String = bearer, expires_in: Long, scope: String, state: Option[String]) extends AuthzResponse
-case class AuthzRequest(clientId: String, responseType: ResponseType, state: Option[State], redirectUri: Option[String], scope: Seq[String]) extends AuthzRequestValidation
+case class AuthzRequest(clientId: String, responseType: ResponseType, state: Option[State], redirectUri: Option[String], scope: Seq[String], approved: Boolean) extends AuthzRequestValidation
 case class AccessTokenRequest(grantType: GrantType, authzCode: String, redirectUri: Option[String], clientId: Option[String]) extends AccessTokenRequestValidation
 trait AccessResponse
 case class AccessTokenResponse(access_token: String, refresh_token: Option[String], token_type: String = bearer, expires_in: Long, scope: String) extends AccessResponse
@@ -206,20 +214,46 @@ object Application extends Controller with Oauth {
         clientId <- request.getQueryString(client_id)
         responseType <- request.getQueryString(response_type)
       } yield {
-        AuthzRequest(clientId, responseType, request.getQueryString(state), request.getQueryString(redirect_uri), request.getQueryString(scope).map(_.split(ScopeSeparator).toSeq).getOrElse(Seq()))
+        getClient(clientId) match {
+          case None => BadRequest(err(invalid_request, "unregistered client"))
+          case Some(client) => {
+            val authzRequest = AuthzRequest(clientId, responseType, request.getQueryString(state), request.getQueryString(redirect_uri), request.getQueryString(scope).map(_.split(ScopeSeparator).toSeq).getOrElse(Seq()), client.autoapprove)
+            processAuthzRequest(authzRequest, client) match {
+              case Left(err) => BadRequest(err)
+              case Right(res) => {
+                val authzCode = (res \ code).as[String]
+                val authzRequest = getAuthzRequest(authzCode).get
+                if(authzRequest.approved) {
+                  val params = res.as[Map[String, JsValue]].map(pair => (pair._1, Seq(pair._2.as[String])))
+                  Redirect(s"${client.redirectUri}", params, 302)
+                } else {
+                  //Redirect("/oauth/approve").withSe
+                  throw new UnsupportedOperationException("User approval not yet implemeted")
+                }
+              }
+            }
+          }
+        }
       }
-    } match {
-      case Some(authzRequest: AuthzRequest) => processAuthzRequest(authzRequest) match {
-        case Left(err) => BadRequest(err)
-        case Right(res) => Ok(res)
-      }
-      case _ => BadRequest(err(invalid_request, s"mandatory: $client_id, $response_type"))
-    }
+    } getOrElse BadRequest(err(invalid_request, s"mandatory: $client_id, $response_type"))
+  }
+
+  object accesstoken {
+    import play.api.data._
+    import play.api.data.Forms._
+    case class AccTokenReq(grant_type: Option[String], code: Option[String], redirect_uri: Option[String], client_id: Option[String])
+    val AccTokenReqForm = Form(
+      mapping(
+        "grant_type" -> optional(text),
+        "code" -> optional(text),
+        "redirect_uri" -> optional(text),
+        "client_id" -> optional(text))(AccTokenReq.apply)(AccTokenReq.unapply))
   }
 
   def accessToken() = Action { implicit request =>
 
     import AccessTokenErrors._
+    import accesstoken._
 
     BasicAuthentication(request) match {
       case None => Unauthorized(err(unauthorized_client, "unauthorized client"))
@@ -227,11 +261,12 @@ object Application extends Controller with Oauth {
         case None => Unauthorized(err(invalid_client, "unregistered client"))
         case Some(client) if (client.clientSecret != encodePassword(basicAuth.clientSecret)) => Unauthorized(err(invalid_client, "bad credentials"))
         case Some(client) => {
+          val form = AccTokenReqForm.bindFromRequest.discardingErrors.get
           for {
-            grantType <- request.getQueryString(grant_type)
-            authzCode <- request.getQueryString(code)
+            grantType <- form.grant_type
+            authzCode <- form.code
           } yield {
-            val atRequest = AccessTokenRequest(grantType, authzCode, request.getQueryString(redirect_uri), request.getQueryString(client_id))
+            val atRequest = AccessTokenRequest(grantType, authzCode, form.redirect_uri, form.client_id)
             processAccessTokenRequest(atRequest, client) match {
               case Left(err) => BadRequest(err)
               case Right(res) => Ok(res)
@@ -241,28 +276,23 @@ object Application extends Controller with Oauth {
       }
     }
   }
-  
-  private def processAuthzRequest[A](authzRequest: AuthzRequest)(implicit request: Request[A]): Either[JsValue, JsValue] = {
 
-    getClient(authzRequest.clientId) match {
-      case None => Left(err(invalid_request, s"unknown client: ${authzRequest.clientId}"))
-      case Some(oauthClient) => {
-        val grantType = determineGrantType(authzRequest)
+  private def processAuthzRequest[A](authzRequest: AuthzRequest, oauthClient: OauthClient)(implicit request: Request[A]): Either[JsValue, JsValue] = {
 
-        if (!oauthClient.authorizedGrantTypes.contains(grantType)) {
-          Left(err(unsupported_response_type, "unsupported grant type"))
-        } else {
-          if (grantType == authorization_code) {
-            val authzCode = generateCode(authzRequest)
-            storeAuthzCode(authzCode, authzRequest, oauthClient)
-            Right(Json.toJson(AuthzCodeResponse(authzCode, authzRequest.state)))
-          } else {
-            val token = generateAccessToken(authzRequest, oauthClient)
-            val stored = storeImplicitToken(token, oauthClient)
-            val expiresIn = stored.validity
-            Right(Json.toJson(ImplicitResponse(stored.value, bearer, expiresIn, authzRequest.scope.mkString(ScopeSeparator), authzRequest.state)))
-          }
-        }
+    val grantType = determineGrantType(authzRequest)
+
+    if (!oauthClient.authorizedGrantTypes.contains(grantType)) {
+      Left(err(unsupported_response_type, "unsupported grant type"))
+    } else {
+      if (grantType == authorization_code) {
+        val authzCode = generateCode(authzRequest)
+        storeAuthzCode(authzCode, authzRequest, oauthClient)
+        Right(Json.toJson(AuthzCodeResponse(authzCode, authzRequest.state)))
+      } else {
+        val token = generateAccessToken(authzRequest, oauthClient)
+        val stored = storeImplicitToken(token, oauthClient)
+        val expiresIn = stored.validity
+        Right(Json.toJson(ImplicitResponse(stored.value, bearer, expiresIn, authzRequest.scope.mkString(ScopeSeparator), authzRequest.state)))
       }
     }
   }
@@ -279,7 +309,7 @@ object Application extends Controller with Oauth {
           case None => {
             /*
              * TODO do we care about any previously stored data since he's started
-             * the flow from the beginning, with the authorization code?
+             * the flow from the beginning, with the authorization code and everything?
              */
             val accessToken = generateAccessToken(authzRequest, oauthClient)
             val refreshToken = if (oauthClient.authorizedGrantTypes.contains(refresh_token)) {

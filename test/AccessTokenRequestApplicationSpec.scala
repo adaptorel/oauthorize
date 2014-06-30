@@ -29,7 +29,6 @@ class AccessTokenRequestApplicationSpec extends Specification {
     s"send 401 if bad client credentials" in new WithApplication {
       Application.saveClient(OauthClient("the_client", Application.encodePassword("wrongpass"), Seq("global"), Seq(authorization_code), "http://www.host.com/cb", Seq(), 3600, 3600, None, false))
       val resp = route(FakeClientRequestWoRegisteredClient(POST, "/oauth/token")).get
-      println(contentAsString(resp))
       status(resp) must equalTo(401)
       (contentAsJson(resp) \ "error") must equalTo(JsString(invalid_client))
       (contentAsJson(resp) \ "error_description") must equalTo(JsString("bad credentials"))
@@ -48,11 +47,26 @@ class AccessTokenRequestApplicationSpec extends Specification {
       (contentAsJson(resp) \ "error") must equalTo(JsString(invalid_request))
       (contentAsJson(resp) \ "error_description") must equalTo(JsString(s"mandatory: $grant_type, $code"))
     }
+    
+    "respond with 200 and the access token if request is correct" in new WithApplication {
+      import controllers.utils.AccessTokenResponse._
+      val authzResp = route(FakeClientRequest(GET, "/oauth/authorize?client_id=the_client&response_type=code&state=555")).get
+      //println(headers(authzResp))
+      val P = """.*?code=(\w+)&state=555""".r
+      val P(authCode) = headers(authzResp).get("Location").get
+      val accessResp = route(FakeClientRequest(POST, "/oauth/token").withFormUrlEncodedBody(code -> authCode, "grant_type" -> authorization_code)).get
+      status(accessResp) must equalTo(200)
+      (contentAsJson(accessResp) \ access_token).as[String] must beMatching("\\w+")
+      (contentAsJson(accessResp) \ refresh_token).as[String] must beMatching("\\w+")
+      (contentAsJson(accessResp) \ token_type).as[String] must equalTo("bearer")
+      (contentAsJson(accessResp) \ expires_in).as[Int] must beGreaterThan(0)
+      //(contentAsJson(accessResp) \ scope).as[String] must beMatching("\\d+")
+    }
   }
 
   private def FakeClientRequest(method: String, path: String) = {
     val pass = Application.encodePassword("pass")
-    Application.saveClient(OauthClient("the_client", pass, Seq("global"), Seq(authorization_code), "http://www.host.com/cb", Seq(), 3600, 3600, None, false))
+    Application.saveClient(OauthClient("the_client", pass, Seq("global"), Seq(authorization_code, refresh_token), "http://www.host.com/cb", Seq(), 3600, 3600, None, true))
     FakeRequest(method, path).withHeaders("Authorization" -> ("Basic " + Base64.encodeBase64String("the_client:pass".getBytes)))
   }
 

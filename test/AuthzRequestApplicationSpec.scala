@@ -34,14 +34,14 @@ class AuthzRequestApplicationSpec extends Specification {
       (contentAsJson(resp) \ "error") must equalTo(JsString(invalid_request))
     }
 
-    "send 200 if response_type is correct" in new WithApplication {
-      val client = OauthClient("a", "a", Seq(), Seq("authorization_code"), "redirect", Seq(), 3600, 3600, None, false)
+    "send 302 if response_type is correct" in new WithApplication {
+      val client = OauthClient("a", "a", Seq(), Seq("authorization_code"), "http://www.r.com/cb", Seq(), 3600, 3600, None, true)
       controllers.Application.saveClient(client)
-      val resp = route(FakeRequest(GET, "/oauth/authorize?client_id=a&response_type=code&state=555").withFormUrlEncodedBody("client_id" -> "a", "response_type" -> "code")).get
+      val resp = route(FakeRequest(GET, "/oauth/authorize?client_id=a&response_type=code&state=555")).get
       //println(contentAsString(resp))
-      status(resp) must equalTo(200)
-      (contentAsJson(resp) \ "code").as[String] must beMatching("""\w+""")
-      (contentAsJson(resp) \ "state").as[String] must equalTo("555")
+      status(resp) must equalTo(302)
+      headers(resp).get("Location").get must beMatching(".*code=\\w+.*")
+      headers(resp).get("Location").get must beMatching(".*state=555.*")
     }
   }
 }
