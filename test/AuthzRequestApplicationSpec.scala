@@ -8,8 +8,8 @@ import play.api.test._
 import play.api.test.Helpers._
 
 import play.api.libs.json._
-import controllers.utils.AuthzErrors._
-import controllers.client._
+import oauth.spec.AuthzErrors._
+import oauthze.model._
 
 @RunWith(classOf[JUnitRunner])
 class AuthzRequestApplicationSpec extends Specification {

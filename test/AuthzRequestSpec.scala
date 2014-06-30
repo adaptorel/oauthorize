@@ -5,11 +5,11 @@ import org.specs2.runner._
 import org.junit.runner._
 import play.api.test._
 import play.api.test.Helpers._
-import controllers.utils.Req._
-import controllers.utils._
-import controllers.utils.AuthzErrors._
-import controllers.utils.Error._
-import controllers.AuthzRequest
+import oauth.spec.ResponseType
+import oauth.spec.Req._
+import oauth.spec.AuthzErrors._
+import oauth.spec.Error._
+import oauthze.model._
 import play.api.libs.json.Json
 import play.api.libs.json.JsString
 

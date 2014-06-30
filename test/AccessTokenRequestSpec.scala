@@ -5,16 +5,15 @@ import org.specs2.runner._
 import org.junit.runner._
 import play.api.test._
 import play.api.test.Helpers._
-import controllers.utils.Req._
-import controllers.utils._
-import controllers.utils.GrantTypes._
-import controllers.utils.AccessTokenErrors._
-import controllers.utils.Error._
+import oauth.spec.Req._
+import oauthze.utils._
+import oauthze.model._
+import oauth.spec.GrantTypes._
+import oauth.spec.AccessTokenErrors._
+import oauth.spec.Error._
 
-import controllers.AuthzRequest
 import play.api.libs.json.Json
 import play.api.libs.json.JsString
-import controllers.AccessTokenRequest
 
 @RunWith(classOf[JUnitRunner])
 class AccessTokenRequestSpec extends Specification {
