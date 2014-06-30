@@ -34,6 +34,7 @@ trait Authorize extends Controller {
             processAuthzRequest(authzRequest, client) match {
               case Left(err) => BadRequest(err)
               case Right(res) => {
+                //TODO this fails fast for ImplicitResponse
                 val authzCode = (res \ code).as[String]
                 val authzRequest = getAuthzRequest(authzCode).get
                 if (authzRequest.approved) {
