@@ -28,7 +28,7 @@ trait AccessToken extends Controller {
       case None => Unauthorized(err(unauthorized_client, "unauthorized client"))
       case Some(basicAuth) => getClient(basicAuth.clientId) match {
         case None => Unauthorized(err(invalid_client, "unregistered client"))
-        case Some(client) if (client.clientSecret != encodePassword(basicAuth.clientSecret)) => Unauthorized(err(invalid_client, "bad credentials"))
+        case Some(client) if (!passwordMatches(basicAuth.clientSecret, client.clientSecret)) => Unauthorized(err(invalid_client, "bad credentials"))
         case Some(client) => {
           val form = AccTokenReqForm.bindFromRequest.discardingErrors.get
           for {

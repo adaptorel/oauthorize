@@ -10,6 +10,6 @@ object json {
   implicit val AccessTokenResponseFormat = Json.format[AccessTokenResponse]
 }
 
-trait Oauth extends InMemoryOauthClientStore with DefaultAuthzCodeGenerator with Sha256PasswordEncoder
+trait Oauth extends InMemoryOauthClientStore with DefaultAuthzCodeGenerator with BCryptPasswordEncoder
 
 object Application extends Authorize with UserApproval with AccessToken with Oauth

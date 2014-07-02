@@ -3,6 +3,8 @@ package oauthze.service
 import oauthze.utils._
 import oauthze.model._
 import java.util.UUID
+import bcrypt.BCrypt
+import java.security.SecureRandom
 
 trait PasswordEncoder {
   def encodePassword(pwd: String): String
@@ -11,7 +13,16 @@ trait PasswordEncoder {
 
 trait Sha256PasswordEncoder extends PasswordEncoder {
   override def encodePassword(pwd: String): String = sha256(pwd)
-  def passwordMatches(rawPassword: String, encodedPassword: String): Boolean = sha256(rawPassword) == encodedPassword
+  override def passwordMatches(rawPassword: String, encodedPassword: String): Boolean = sha256(rawPassword) == encodedPassword
+}
+
+trait BCryptPasswordEncoder extends PasswordEncoder {
+  private val rnd = new SecureRandom
+  val rounds = 10
+  private def paddedRounds = { rounds.toString.reverse.padTo(2, "0").reverse.mkString }
+  private def prefix = "$2a$" + paddedRounds + "$"
+  override def encodePassword(pwd: String): String = BCrypt.hashpw(pwd, BCrypt.gensalt(rounds, rnd)).substring(7)
+  override def passwordMatches(rawPassword: String, encodedPassword: String): Boolean = BCrypt.checkpw(rawPassword, prefix + encodedPassword)
 }
 
 trait OauthClientStore {

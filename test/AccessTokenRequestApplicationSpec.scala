@@ -12,6 +12,7 @@ import oauth2.spec.Req._
 import oauth2.spec.GrantTypes._
 import controllers.Application
 import org.apache.commons.codec.binary.Base64
+import java.net.URLDecoder
 
 @RunWith(classOf[JUnitRunner])
 class AccessTokenRequestApplicationSpec extends Specification {
@@ -52,12 +53,13 @@ class AccessTokenRequestApplicationSpec extends Specification {
       import oauth2.spec.AccessTokenResponse._
       val authzResp = route(FakeClientRequest(GET, "/oauth/authorize?client_id=the_client&response_type=code&state=555")).get
       //println(headers(authzResp))
-      val P = """.*?code=(\w+)&state=555""".r
-      val P(authCode) = headers(authzResp).get("Location").get
-      val accessResp = route(FakeClientRequest(POST, "/oauth/token").withFormUrlEncodedBody(code -> authCode, "grant_type" -> authorization_code)).get
+      val P = """.*?code=(.*)&state=555""".r
+      val P(authzCode) = headers(authzResp).get("Location").get
+      val accessResp = route(FakeClientRequest(POST, "/oauth/token").withFormUrlEncodedBody(code -> URLDecoder.decode(authzCode, "utf8"), "grant_type" -> authorization_code)).get
+      //println(contentAsString(accessResp))
       status(accessResp) must equalTo(200)
-      (contentAsJson(accessResp) \ access_token).as[String] must beMatching("\\w+")
-      (contentAsJson(accessResp) \ refresh_token).as[String] must beMatching("\\w+")
+      (contentAsJson(accessResp) \ access_token).as[String] must beMatching(".{53}")
+      (contentAsJson(accessResp) \ refresh_token).as[String] must beMatching(".{53}")
       (contentAsJson(accessResp) \ token_type).as[String] must equalTo("bearer")
       (contentAsJson(accessResp) \ expires_in).as[Int] must beGreaterThan(0)
       //(contentAsJson(accessResp) \ scope).as[String] must beMatching("\\d+")
