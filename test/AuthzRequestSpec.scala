@@ -18,21 +18,37 @@ class AuthzRequestSpec extends Specification {
 
   "An Authorization request should" should {
 
+    val Redir = "http://www.r.com/cb"
+    val CorrectScope = Seq("internal")
+    implicit val client = OauthClient("a", "a", CorrectScope, Seq("authorization_code"), Redir, Seq(), 3600, 3600, None, true)
+    
     s"contain a valid $client_id request param" in {
-      AuthzRequest(null, null, None, None, Seq(), true).getError.map(_ \ error) must beSome(JsString(invalid_request))
-      AuthzRequest(null, null, None, None, Seq(), true).getError.map(_ \ error_description) must beSome(JsString(s"mandatory: $client_id"))
-      AuthzRequest("a", "code", None, None, Seq(), true).getError must beNone
+      AuthzRequest(null, null, Redir, CorrectScope, true).getError.map(_.error) must beSome(invalid_request)
+      AuthzRequest(null, null, Redir, CorrectScope, true).getError.map(_.error_description).get must beSome(s"mandatory: $client_id")
+      AuthzRequest("a", ResponseType.code, Redir, CorrectScope, true).getError must beNone
     }
 
     s"contain a valid $response_type request param" in {
-      AuthzRequest("a", null, None, None, Seq(), true).getError.map(_ \ error) must beSome(JsString(invalid_request))
-      AuthzRequest("a", null, None, None, Seq(), true).getError.map(_ \ error_description) must beSome(JsString(s"mandatory: $response_type"))
-      AuthzRequest("a", "token", None, None, Seq(), true).getError must beNone
+      AuthzRequest("a", null, Redir, CorrectScope, true).getError.map(_.error) must beSome(invalid_request)
+      AuthzRequest("a", null, Redir, CorrectScope, true).getError.map(_.error_description).get must beSome(s"mandatory: $response_type")
+      AuthzRequest("a", ResponseType.token, Redir, CorrectScope, true).getError must beNone
     }
+    
+    s"contain a valid redirect_uri request param" in {
+      AuthzRequest("a", ResponseType.token, null, CorrectScope, true).getError.map(_.error) must beSome(invalid_request)
+      AuthzRequest("a", ResponseType.token, null, CorrectScope, true).getError.map(_.error_description).get must beSome(s"mandatory: $redirect_uri")
+      AuthzRequest("a", ResponseType.token, Redir, CorrectScope, true).getError must beNone
+    }
+    
+    s"contain a valid scope request param" in {
+      AuthzRequest("a", ResponseType.code, Redir, Seq(), true).getError.map(_.error) must beSome(invalid_request)
+      AuthzRequest("a", ResponseType.code, Redir, Seq(), true).getError.map(_.error_description).get must beSome(s"mandatory: $scope")
+      AuthzRequest("a", ResponseType.code, Redir, CorrectScope, true).getError must beNone
+    }    
 
     s"contain a $response_type of type '${ResponseType.code}' or '${ResponseType.token}'" in {
-      AuthzRequest("a", "b", None, None, Seq(), true).getError.map(_ \ error) must beSome(JsString(invalid_request))
-      AuthzRequest("a", "b", None, None, Seq(), true).getError.map(_ \ error_description) must beSome(JsString(s"mandatory: $response_type in ['${ResponseType.code}','${ResponseType.token}']"))
+      AuthzRequest("a", "b", Redir, CorrectScope, true).getError.map(_.error) must beSome(invalid_request)
+      AuthzRequest("a", "b", Redir, CorrectScope, true).getError.map(_.error_description).get must beSome(s"mandatory: $response_type in ['${ResponseType.code}','${ResponseType.token}']")
     }
 
   }

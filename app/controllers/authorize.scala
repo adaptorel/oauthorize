@@ -7,47 +7,51 @@ import oauth2.spec.Req._
 import oauth2.spec.GrantTypes._
 import oauth2.spec.AuthzErrors._
 import oauth2.spec.model._
+import oauth2.spec.Err
 import oauthze.model._
 import oauthze.utils._
 import play.api.libs.json.JsValue
 import play.api.libs.json.Json
+import play.api.libs.json.Json.toJson
 import oauthze.service._
+import oauth2.spec.StatusCodes
 
-trait Authorize extends Controller {
+trait Authorize extends RenderingUtils {
 
   this: OauthClientStore with AuthzCodeGenerator with UserApproval =>
 
   import json._
   import authzform._
-  type JsErr = JsValue
 
   def authorize = Action { implicit request =>
     val req = AuthzReqForm.bindFromRequest.discardingErrors.get
-    
-    (req.client_id, req.response_type) match {
-      case (Some(clientId), Some(responseType)) => {
+
+    (req.client_id, req.response_type, req.redirect_uri, req.scope) match {
+      case (Some(clientId), Some(responseType), Some(redirectUri), Some(reqScope)) => {
         getClient(clientId) match {
-          case None => BadRequest(err(invalid_request, "unregistered client"))
+          case None => err(invalid_request, "unregistered client")
           case Some(client) => {
-            val authzRequest = AuthzRequest(clientId, responseType, req.state, req.redirect_uri, req.scope.map(_.split(ScopeSeparator).toSeq).getOrElse(Seq()), client.autoapprove)
-            processAuthzRequest(authzRequest, client) match {
-              case Left(err) => BadRequest(err)
-              case Right(resp) => resp match {
-                case authzResponse: AuthzCodeResponse => respondWith(authzResponse, client)
-                case implicitResponse: ImplicitResponse => Ok(Json.toJson(implicitResponse))
-                case _ => throw new IllegalStateException("Shouldn't have ever got here")
+            val authzRequest = AuthzRequest(clientId, responseType, redirectUri, reqScope.split(ScopeSeparator).toSeq, client.autoapprove, req.state)
+            authzRequest.getError(client) match {
+              case Some(err) => err
+              case None => processAuthzRequest(authzRequest, client) match {
+                case Left(err) => err
+                case Right(resp) => resp match {
+                  case authzResponse: AuthzCodeResponse => respondWith(authzResponse, client)
+                  case implicitResponse: ImplicitResponse => Ok(Json.toJson(implicitResponse))
+                  case _ => throw new IllegalStateException("Shouldn't have ever got here")
+                }
               }
             }
           }
         }
       }
-      case _ => BadRequest(err(invalid_request, s"mandatory: $client_id, $response_type"))
+      case _ => err(invalid_request, s"mandatory: $client_id, $response_type, $redirect_uri, $scope")
     }
   }
 
   private def respondWith(authzResponse: AuthzCodeResponse, client: OauthClient) = {
     val authzRequest = getAuthzRequest(authzResponse.code).get
-    
     if (authzRequest.approved) {
       approved(authzResponse.code, authzRequest.state, client)
     } else {
@@ -55,7 +59,7 @@ trait Authorize extends Controller {
     }
   }
 
-  private def processAuthzRequest[A](authzRequest: AuthzRequest, oauthClient: OauthClient)(implicit request: Request[A]): Either[JsErr, Oauth2Response] = {
+  private def processAuthzRequest[A](authzRequest: AuthzRequest, oauthClient: OauthClient)(implicit request: Request[A]): Either[Err, Oauth2Response] = {
     val grantType = determineGrantType(authzRequest)
 
     if (!oauthClient.authorizedGrantTypes.contains(grantType)) {
@@ -69,7 +73,7 @@ trait Authorize extends Controller {
         val token = generateAccessToken(authzRequest, oauthClient)
         val stored = storeImplicitToken(token, oauthClient)
         val expiresIn = stored.validity
-        Right(ImplicitResponse(stored.value, bearer, expiresIn, authzRequest.scope.mkString(ScopeSeparator), authzRequest.state))
+        Right(ImplicitResponse(stored.value, bearer, expiresIn, authzRequest.authScope.mkString(ScopeSeparator), authzRequest.state))
       }
     }
   }
@@ -86,13 +90,13 @@ trait Authorize extends Controller {
   object authzform {
     import play.api.data._
     import play.api.data.Forms._
-    case class AuthzReq(client_id: Option[String], response_type: Option[String], redirect_uri: Option[String], state: Option[String], scope: Option[String])
+    case class AuthzReq(client_id: Option[String], response_type: Option[String], redirect_uri: Option[String], scope: Option[String], state: Option[String])
     val AuthzReqForm = Form(
       mapping(
         "client_id" -> optional(text),
         "response_type" -> optional(text),
         "redirect_uri" -> optional(text),
-        "state" -> optional(text),
-        "scope" -> optional(text))(AuthzReq.apply)(AuthzReq.unapply))
+        "scope" -> optional(text),
+        "state" -> optional(text))(AuthzReq.apply)(AuthzReq.unapply))
   }
 }

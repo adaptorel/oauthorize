@@ -36,6 +36,15 @@ object ResponseType {
   val token = "token"
 }
 
+object StatusCodes {
+  val Ok = 200
+  val BadRequest = 400
+  val Unauthorized = 401
+  val Redirect = 302
+}
+
+case class Err(error: String, error_description: Option[String] = None, error_uri: Option[String] = None, redirect_uri: Option[String] = None, status_code: Int = StatusCodes.BadRequest)
+
 object Error {
   val error = "error"
   val error_description = "error_description"

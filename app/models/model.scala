@@ -4,10 +4,12 @@ import oauthze.utils._
 import oauth2.spec.Req._
 import oauth2.spec.ResponseType
 import oauth2.spec.GrantTypes._
-import play.api.libs.json.JsValue
+import oauth2.spec.StatusCodes._
+import oauth2.spec.Err
+import scala.collection.SeqLike
 
-case class AuthzRequest(clientId: String, responseType: ResponseType, state: Option[State], redirectUri: Option[String], scope: Seq[String], approved: Boolean) extends AuthzRequestValidation
-case class AccessTokenRequest(grantType: GrantType, authzCode: String, redirectUri: Option[String], clientId: Option[String]) extends AccessTokenRequestValidation
+case class AuthzRequest(clientId: String, responseType: ResponseType, redirectUri: String, authScope: Seq[String], approved: Boolean, state: Option[State] = None) extends AuthzRequestValidation
+case class AccessTokenRequest(grantType: GrantType, authzCode: String, redirectUri: String, clientId: Option[String]) extends AccessTokenRequestValidation
 
 abstract class Token(value: String, client_id: String, scope: Seq[String], validity: Long, created: Long)
 case class AccessToken(value: String, client_id: String, scope: Seq[String], validity: Long, created: Long) extends Token(value, client_id, scope, validity, created)
@@ -24,17 +26,29 @@ trait AuthzRequestValidation {
 
   import oauth2.spec.AuthzErrors._
 
-  def getError: Option[JsValue] = {
+  def getError(implicit client: OauthClient): Option[Err] = {
     errClientId orElse
-      errResponseType
+      errResponseType orElse
+      errRedirectUri orElse
+      errScope
   }
 
   private def errClientId = {
     errForEmpty(clientId, err(invalid_request, s"mandatory: $client_id"))
   }
 
-  private def errResponseType = {
+  private def errScope(implicit client: OauthClient) = {
+    errForEmpty(authScope, err(invalid_request, s"mandatory: $scope")) orElse {
+      if (authScope.foldLeft(false)((acc, current) => acc || !client.scope.contains(current))) Some(err(invalid_request, s"invalid scope value")) else None
+    }
+  }
 
+  private def errRedirectUri(implicit client: OauthClient) = {
+    errForEmpty(redirectUri, err(invalid_request, s"mandatory: $redirect_uri")) orElse
+      (if (redirectUri != client.redirectUri) Some(err(invalid_request, s"missmatched: $redirect_uri")) else None)
+  }
+
+  private def errResponseType = {
     errForEmpty(responseType, err(invalid_request, s"mandatory: $response_type")) orElse {
       responseType match {
         case ResponseType.code | ResponseType.token => None
@@ -43,9 +57,9 @@ trait AuthzRequestValidation {
     }
   }
 
-  private def errForEmpty(value: String, error: JsValue) = {
+  private def errForEmpty(value: { def isEmpty: Boolean }, error: Err) = {
     Option(value).filter(!_.isEmpty) match {
-      case Some(s: String) => None
+      case Some(s: Any) => None
       case _ => Some(error)
     }
   }
@@ -56,7 +70,7 @@ trait AccessTokenRequestValidation {
 
   import oauth2.spec.AccessTokenErrors._
 
-  def getError(authzRequest: AuthzRequest, authenticatedClientId: String): Option[JsValue] = {
+  def getError(authzRequest: AuthzRequest, authenticatedClientId: String): Option[Err] = {
     errClientId(authzRequest, authenticatedClientId) orElse
       errGrantType orElse
       errCode(authzRequest) orElse
@@ -78,12 +92,12 @@ trait AccessTokenRequestValidation {
   }
 
   private def errForUnmatchingRedirectUri(authzRequest: AuthzRequest) = {
-    authzRequest.redirectUri map { oauthzRedirectUri =>
-      if (!redirectUri.isDefined || oauthzRedirectUri != redirectUri.get) Some(err(invalid_request, s"mismatched: $redirect_uri")) else None
+    errForEmpty(redirectUri, err(invalid_request, s"mandatory: $redirect_uri")) orElse {
+      if (authzRequest.redirectUri != redirectUri) Some(err(invalid_request, s"mismatched: $redirect_uri")) else None
     }
-  }.flatten
+  }
 
-  private def errForEmpty(value: String, error: JsValue) = {
+  private def errForEmpty(value: String, error: Err) = {
     Option(value).filterNot(_.trim.isEmpty) match {
       case Some(s: String) => None
       case _ => Some(error)

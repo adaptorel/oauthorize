@@ -60,7 +60,7 @@ trait DefaultAuthzCodeGenerator extends AuthzCodeGenerator {
   this: PasswordEncoder =>
   override def generateCode(authzRequest: AuthzRequest) = newToken
   //no refresh token for authorization request token / implicit grant
-  override def generateAccessToken(authzRequest: AuthzRequest, oauthClient: OauthClient) = AccessToken(newToken, oauthClient.clientId, authzRequest.scope, oauthClient.accessTokenValidity, System.currentTimeMillis)
-  override def generateRefreshToken(authzRequest: AuthzRequest, oauthClient: OauthClient) = RefreshToken(newToken, oauthClient.clientId, authzRequest.scope, oauthClient.accessTokenValidity, System.currentTimeMillis)
+  override def generateAccessToken(authzRequest: AuthzRequest, oauthClient: OauthClient) = AccessToken(newToken, oauthClient.clientId, authzRequest.authScope, oauthClient.accessTokenValidity, System.currentTimeMillis)
+  override def generateRefreshToken(authzRequest: AuthzRequest, oauthClient: OauthClient) = RefreshToken(newToken, oauthClient.clientId, authzRequest.authScope, oauthClient.accessTokenValidity, System.currentTimeMillis)
   def newToken = encodePassword(UUID.randomUUID().toString)
 }

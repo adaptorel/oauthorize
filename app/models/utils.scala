@@ -1,11 +1,14 @@
 package oauthze
 
+import oauth2.spec.Err
+
 object utils {
 
   import play.api.mvc.Request
   import play.api.libs.json.JsValue
   import play.api.libs.json.Json
   import oauth2.spec.Error._
+  import oauth2.spec.StatusCodes._
   import java.util.UUID
   import org.apache.commons.codec.binary.Hex
   import org.apache.commons.codec.binary.Base64
@@ -17,12 +20,16 @@ object utils {
 
   val ScopeSeparator = " "
 
-  def err(err: String): JsValue = {
-    Json.obj(error -> err)
+  def err(err: String, statusCode: Int): Err = {
+    Err(err, None, None, None, statusCode)
   }
 
-  def err(err: String, desc: String): JsValue = {
-    Json.obj(error -> err, error_description -> desc)
+  def err(error: String, desc: String, statusCode: Int = BadRequest): Err = {
+    err(error, desc, statusCode, null)
+  }
+  
+  def err(err: String, desc: String, statusCode: Int, redirectUri: String): Err = {
+    Err(err, Some(desc), None, Option(redirectUri), statusCode)
   }
 
   private def sha256UUID() = {

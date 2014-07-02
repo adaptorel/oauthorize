@@ -12,8 +12,10 @@ import oauth2.spec.model._
 import oauth2.spec.TokenType.bearer
 import play.api.libs.json.JsValue
 import play.api.libs.json.Json
+import oauth2.spec.StatusCodes
+import oauth2.spec.Err
 
-trait AccessToken extends Controller {
+trait AccessToken extends Controller with RenderingUtils {
 
   this: OauthClientStore with AuthzCodeGenerator with PasswordEncoder =>
 
@@ -25,29 +27,27 @@ trait AccessToken extends Controller {
     import accesstoken._
 
     BasicAuthentication(request) match {
-      case None => Unauthorized(err(unauthorized_client, "unauthorized client"))
+      case None => err(unauthorized_client, "unauthorized client", StatusCodes.Unauthorized)
       case Some(basicAuth) => getClient(basicAuth.clientId) match {
-        case None => Unauthorized(err(invalid_client, "unregistered client"))
-        case Some(client) if (!passwordMatches(basicAuth.clientSecret, client.clientSecret)) => Unauthorized(err(invalid_client, "bad credentials"))
+        case None => err(invalid_client, "unregistered client", StatusCodes.Unauthorized)
+        case Some(client) if (!passwordMatches(basicAuth.clientSecret, client.clientSecret)) => err(invalid_client, "bad credentials", StatusCodes.Unauthorized)
         case Some(client) => {
           val form = AccTokenReqForm.bindFromRequest.discardingErrors.get
-          for {
-            grantType <- form.grant_type
-            authzCode <- form.code
-          } yield {
-            val atRequest = AccessTokenRequest(grantType, authzCode, form.redirect_uri, form.client_id)
-            processAccessTokenRequest(atRequest, client) match {
-              case Left(err) => BadRequest(err)
-              case Right(res) => Ok(res)
-            }
+          (form.grant_type, form.code, form.redirect_uri) match {
+            case (Some(grantType), Some(authzCode), Some(redirectUri)) => {
+              val atRequest = AccessTokenRequest(grantType, authzCode, redirectUri, form.client_id)
+              processAccessTokenRequest(atRequest, client) match {
+                case Left(err) => err
+                case Right(res) => res
+              }
+            } case _ => err(invalid_request, s"mandatory: $grant_type, $code, $redirect_uri")
           }
-        } getOrElse BadRequest(err(invalid_request, s"mandatory: $grant_type, $code"))
+        }
       }
     }
   }
 
-  private def processAccessTokenRequest[A](accessTokenRequest: AccessTokenRequest, oauthClient: OauthClient)(implicit request: Request[A]): Either[JsValue, JsValue] = {
-
+  private def processAccessTokenRequest[A](accessTokenRequest: AccessTokenRequest, oauthClient: OauthClient)(implicit request: Request[A]): Either[Err, AccessTokenResponse] = {
     import oauth2.spec.AccessTokenErrors._
 
     getAuthzRequest(accessTokenRequest.authzCode) match {
@@ -65,8 +65,8 @@ trait AccessToken extends Controller {
               Some(generateRefreshToken(authzRequest, oauthClient))
             } else None
             val stored = storeAccessAndRefreshTokens(AccessAndRefreshTokens(accessToken, refreshToken), oauthClient)
-            val response = AccessTokenResponse(stored.accessToken.value, stored.refreshToken.map(_.value), bearer, stored.accessToken.validity, authzRequest.scope.mkString(ScopeSeparator))
-            Right(Json.toJson(response))
+            val response = AccessTokenResponse(stored.accessToken.value, stored.refreshToken.map(_.value), bearer, stored.accessToken.validity, authzRequest.authScope.mkString(ScopeSeparator))
+            Right(response)
           }
         }
       }
