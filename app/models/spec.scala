@@ -43,7 +43,8 @@ object StatusCodes {
   val Redirect = 302
 }
 
-case class Err(error: String, error_description: Option[String] = None, error_uri: Option[String] = None, redirect_uri: Option[String] = None, status_code: Int = StatusCodes.BadRequest)
+case class Err(error: String, error_description: Option[String] = None, error_uri: Option[String] = None,
+  @transient redirect_uri: Option[String] = None, @transient status_code: Int = StatusCodes.BadRequest)
 
 object Error {
   val error = "error"

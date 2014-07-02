@@ -58,7 +58,7 @@ class AuthzRequestApplicationSpec extends Specification {
     "send 302 if response_type is correct" in new WithApplication {
       val client = OauthClient("a", "a", Seq("internal"), Seq("authorization_code"), RedirectUri, Seq(), 3600, 3600, None, true)
       controllers.Application.saveClient(client)
-      val CodeParamRegex = """.*?code=(.*)&state=555""".r
+      val CodeParamRegex = """.*\?code=(.*)&state=555""".r
       val resp = route(FakeRequest(GET, s"/oauth/authorize?client_id=a&response_type=code&state=555&redirect_uri=$RedirectUri&scope=internal")).get
       //println(contentAsString(resp))
       status(resp) must equalTo(302)
@@ -66,6 +66,21 @@ class AuthzRequestApplicationSpec extends Specification {
       val CodeParamRegex(authzCode) = expectedUri
       URLDecoder.decode(authzCode, "utf-8") must beMatching(".{53}")
       expectedUri must beMatching(".*state=555.*")
+    }
+    
+    "send 302 and hash uri if implicit grant type" in new WithApplication {
+      val client = OauthClient("a", "a", Seq("internal"), Seq("authorization_code", "implicit"), RedirectUri, Seq(), 3600, 3600, None, true)
+      controllers.Application.saveClient(client)
+      val resp = route(FakeRequest(GET, s"/oauth/authorize?client_id=a&response_type=token&state=555&redirect_uri=$RedirectUri&scope=internal")).get
+      status(resp) must equalTo(302)
+      val expectedUri = headers(resp).get("Location").get
+      val Regex = ".*#access_token=(.*)&token_type=(.*)&expires_in=(.*)&scope=(.*)&state=(.*)".r
+      val Regex(accessToken, tokenType, expiresIn, scope, state) = expectedUri
+      URLDecoder.decode(accessToken, "utf-8") must beMatching(".{53}")
+      tokenType must equalTo("bearer")
+      expiresIn.toInt must be greaterThan(3500)
+      scope must equalTo("internal")
+      state must equalTo("555")
     }
   }
 }

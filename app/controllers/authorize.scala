@@ -15,6 +15,11 @@ import play.api.libs.json.Json
 import play.api.libs.json.Json.toJson
 import oauthze.service._
 import oauth2.spec.StatusCodes
+import java.io.StringWriter
+import oauth2.spec.TokenType
+import scala.collection.immutable.ListMap
+import scala.collection.immutable.SortedMap
+import scala.collection.immutable.TreeMap
 
 trait Authorize extends RenderingUtils {
 
@@ -38,7 +43,7 @@ trait Authorize extends RenderingUtils {
                 case Left(err) => err
                 case Right(resp) => resp match {
                   case authzResponse: AuthzCodeResponse => respondWith(authzResponse, client)
-                  case implicitResponse: ImplicitResponse => Ok(Json.toJson(implicitResponse))
+                  case implicitResponse: ImplicitResponse => renderImplicitResponse(implicitResponse, client)
                   case _ => throw new IllegalStateException("Shouldn't have ever got here")
                 }
               }
@@ -48,6 +53,17 @@ trait Authorize extends RenderingUtils {
       }
       case _ => err(invalid_request, s"mandatory: $client_id, $response_type, $redirect_uri, $scope")
     }
+  }
+
+  private def renderImplicitResponse(implicitResponse: ImplicitResponse, client: OauthClient) = {
+    import oauth2.spec.AccessTokenResponse._
+    val params = ListMap[String, Any]() +
+      (access_token -> implicitResponse.access_token) +
+      (token_type -> TokenType.bearer) +
+      (expires_in -> implicitResponse.expires_in) +
+      (scope -> implicitResponse.scope) +
+      (state -> implicitResponse.state)
+    Redirect(encodedQueryString(client.redirectUri, params, "#"), Map(), 302)
   }
 
   private def respondWith(authzResponse: AuthzCodeResponse, client: OauthClient) = {

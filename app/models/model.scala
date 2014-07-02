@@ -7,6 +7,7 @@ import oauth2.spec.GrantTypes._
 import oauth2.spec.StatusCodes._
 import oauth2.spec.Err
 import scala.collection.SeqLike
+import oauth2.spec.StatusCodes
 
 case class AuthzRequest(clientId: String, responseType: ResponseType, redirectUri: String, authScope: Seq[String], approved: Boolean, state: Option[State] = None) extends AuthzRequestValidation
 case class AccessTokenRequest(grantType: GrantType, authzCode: String, redirectUri: String, clientId: Option[String]) extends AccessTokenRequestValidation
