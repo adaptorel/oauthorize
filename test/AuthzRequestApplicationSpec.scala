@@ -8,7 +8,7 @@ import play.api.test._
 import play.api.test.Helpers._
 
 import play.api.libs.json._
-import oauth.spec.AuthzErrors._
+import oauth2.spec.AuthzErrors._
 import oauthze.model._
 
 @RunWith(classOf[JUnitRunner])

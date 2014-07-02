@@ -1,0 +1,14 @@
+@(authzCode: String, authzRequest: oauthze.model.AuthzRequest, client: oauthze.model.OauthClient)
+@main(title = "User approval") {
+    
+  <h1>Application '@client.clientId' requires access to '@authzRequest.scope'</h1>
+  <form action="/oauth/approve" method="POST">
+    <input type="hidden" id="code" name="code" value="@authzCode">
+    @authzRequest.state.map { state =>
+    <input type="hidden" id="state" name="state" value="@state">
+    }
+  	<input type="submit" value="approve" name="Allow">
+  	<input type="submit" value="deny" name="Deny">
+  </form>
+    
+}

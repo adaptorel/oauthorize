@@ -5,7 +5,7 @@ object utils {
   import play.api.mvc.Request
   import play.api.libs.json.JsValue
   import play.api.libs.json.Json
-  import oauth.spec.Error._
+  import oauth2.spec.Error._
   import java.util.UUID
   import org.apache.commons.codec.binary.Hex
   import org.apache.commons.codec.binary.Base64

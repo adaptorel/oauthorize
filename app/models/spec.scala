@@ -1,10 +1,11 @@
-package oauth.spec
+package oauth2.spec
 
 object model {
   import TokenType._
-  case class AuthzCodeResponse(code: String, state: Option[String])
-  case class ImplicitResponse(access_token: String, token_type: String = bearer, expires_in: Long, scope: String, state: Option[String])
-  case class AccessTokenResponse(access_token: String, refresh_token: Option[String], token_type: String = bearer, expires_in: Long, scope: String)
+  trait Oauth2Response
+  case class AuthzCodeResponse(code: String, state: Option[String]) extends Oauth2Response
+  case class ImplicitResponse(access_token: String, token_type: String = bearer, expires_in: Long, scope: String, state: Option[String]) extends Oauth2Response
+  case class AccessTokenResponse(access_token: String, refresh_token: Option[String], token_type: String = bearer, expires_in: Long, scope: String) extends Oauth2Response
 }
 
 object GrantTypes {

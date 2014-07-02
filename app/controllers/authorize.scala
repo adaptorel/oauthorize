@@ -1,13 +1,12 @@
 package controllers
 
-import play.api.mvc.Controller
 import play.api._
 import play.api.mvc._
-import oauth.spec.TokenType._
-import oauth.spec.Req._
-import oauth.spec.GrantTypes._
-import oauth.spec.AuthzErrors._
-import oauth.spec.model._
+import oauth2.spec.TokenType._
+import oauth2.spec.Req._
+import oauth2.spec.GrantTypes._
+import oauth2.spec.AuthzErrors._
+import oauth2.spec.model._
 import oauthze.model._
 import oauthze.utils._
 import play.api.libs.json.JsValue
@@ -16,44 +15,47 @@ import oauthze.service._
 
 trait Authorize extends Controller {
 
-  this: OauthClientStore with AuthzCodeGenerator =>
-  
-  import json._
-  import play.api.mvc.Controller
+  this: OauthClientStore with AuthzCodeGenerator with UserApproval =>
 
-  def authorize() = Action { implicit request =>
-    {
-      for {
-        clientId <- request.getQueryString(client_id)
-        responseType <- request.getQueryString(response_type)
-      } yield {
+  import json._
+  import authzform._
+  type JsErr = JsValue
+
+  def authorize = Action { implicit request =>
+    val req = AuthzReqForm.bindFromRequest.discardingErrors.get
+    
+    (req.client_id, req.response_type) match {
+      case (Some(clientId), Some(responseType)) => {
         getClient(clientId) match {
           case None => BadRequest(err(invalid_request, "unregistered client"))
           case Some(client) => {
-            val authzRequest = AuthzRequest(clientId, responseType, request.getQueryString(state), request.getQueryString(redirect_uri), request.getQueryString(scope).map(_.split(ScopeSeparator).toSeq).getOrElse(Seq()), client.autoapprove)
+            val authzRequest = AuthzRequest(clientId, responseType, req.state, req.redirect_uri, req.scope.map(_.split(ScopeSeparator).toSeq).getOrElse(Seq()), client.autoapprove)
             processAuthzRequest(authzRequest, client) match {
               case Left(err) => BadRequest(err)
-              case Right(res) => {
-                //TODO this fails fast for ImplicitResponse
-                val authzCode = (res \ code).as[String]
-                val authzRequest = getAuthzRequest(authzCode).get
-                if (authzRequest.approved) {
-                  val params = res.as[Map[String, JsValue]].map(pair => (pair._1, Seq(pair._2.as[String])))
-                  Redirect(s"${client.redirectUri}", params, 302)
-                } else {
-                  //Redirect("/oauth/approve").withSe
-                  throw new UnsupportedOperationException("User approval not yet implemeted")
-                }
+              case Right(resp) => resp match {
+                case authzResponse: AuthzCodeResponse => respondWith(authzResponse, client)
+                case implicitResponse: ImplicitResponse => Ok(Json.toJson(implicitResponse))
+                case _ => throw new IllegalStateException("Shouldn't have ever got here")
               }
             }
           }
         }
       }
-    } getOrElse BadRequest(err(invalid_request, s"mandatory: $client_id, $response_type"))
+      case _ => BadRequest(err(invalid_request, s"mandatory: $client_id, $response_type"))
+    }
   }
 
-  private def processAuthzRequest[A](authzRequest: AuthzRequest, oauthClient: OauthClient)(implicit request: Request[A]): Either[JsValue, JsValue] = {
+  private def respondWith(authzResponse: AuthzCodeResponse, client: OauthClient) = {
+    val authzRequest = getAuthzRequest(authzResponse.code).get
+    
+    if (authzRequest.approved) {
+      approved(authzResponse.code, authzRequest.state, client)
+    } else {
+      initiateApproval(authzResponse.code, authzRequest, client)
+    }
+  }
 
+  private def processAuthzRequest[A](authzRequest: AuthzRequest, oauthClient: OauthClient)(implicit request: Request[A]): Either[JsErr, Oauth2Response] = {
     val grantType = determineGrantType(authzRequest)
 
     if (!oauthClient.authorizedGrantTypes.contains(grantType)) {
@@ -62,22 +64,35 @@ trait Authorize extends Controller {
       if (grantType == authorization_code) {
         val authzCode = generateCode(authzRequest)
         storeAuthzCode(authzCode, authzRequest, oauthClient)
-        Right(Json.toJson(AuthzCodeResponse(authzCode, authzRequest.state)))
+        Right(AuthzCodeResponse(authzCode, authzRequest.state))
       } else {
         val token = generateAccessToken(authzRequest, oauthClient)
         val stored = storeImplicitToken(token, oauthClient)
         val expiresIn = stored.validity
-        Right(Json.toJson(ImplicitResponse(stored.value, bearer, expiresIn, authzRequest.scope.mkString(ScopeSeparator), authzRequest.state)))
+        Right(ImplicitResponse(stored.value, bearer, expiresIn, authzRequest.scope.mkString(ScopeSeparator), authzRequest.state))
       }
     }
   }
 
-  import oauth.spec.ResponseType
+  import oauth2.spec.ResponseType
   private def determineGrantType(authzRequest: AuthzRequest) = {
     authzRequest.responseType match {
       case "code" => authorization_code
       case "token" => implic1t
       case _ => throw new IllegalStateException(s"Should have only ${ResponseType.code} and ${ResponseType.token} authorization request response types")
     }
+  }
+
+  object authzform {
+    import play.api.data._
+    import play.api.data.Forms._
+    case class AuthzReq(client_id: Option[String], response_type: Option[String], redirect_uri: Option[String], state: Option[String], scope: Option[String])
+    val AuthzReqForm = Form(
+      mapping(
+        "client_id" -> optional(text),
+        "response_type" -> optional(text),
+        "redirect_uri" -> optional(text),
+        "state" -> optional(text),
+        "scope" -> optional(text))(AuthzReq.apply)(AuthzReq.unapply))
   }
 }

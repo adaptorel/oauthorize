@@ -1,9 +1,9 @@
 package oauthze.model
 
 import oauthze.utils._
-import oauth.spec.Req._
-import oauth.spec.ResponseType
-import oauth.spec.GrantTypes._
+import oauth2.spec.Req._
+import oauth2.spec.ResponseType
+import oauth2.spec.GrantTypes._
 import play.api.libs.json.JsValue
 
 case class AuthzRequest(clientId: String, responseType: ResponseType, state: Option[State], redirectUri: Option[String], scope: Seq[String], approved: Boolean) extends AuthzRequestValidation
@@ -22,7 +22,7 @@ case class AccessAndRefreshTokens(accessToken: AccessToken, refreshToken: Option
 trait AuthzRequestValidation {
   this: AuthzRequest =>
 
-  import oauth.spec.AuthzErrors._
+  import oauth2.spec.AuthzErrors._
 
   def getError: Option[JsValue] = {
     errClientId orElse
@@ -54,7 +54,7 @@ trait AuthzRequestValidation {
 trait AccessTokenRequestValidation {
   this: AccessTokenRequest =>
 
-  import oauth.spec.AccessTokenErrors._
+  import oauth2.spec.AccessTokenErrors._
 
   def getError(authzRequest: AuthzRequest, authenticatedClientId: String): Option[JsValue] = {
     errClientId(authzRequest, authenticatedClientId) orElse

@@ -4,7 +4,7 @@ import oauthze.service._
 import play.api.libs.json.Json
 
 object json {
-  import oauth.spec.model._
+  import oauth2.spec.model._
   implicit val AuthzCodeResponseFormat = Json.format[AuthzCodeResponse]
   implicit val ImplicitResponseFormat = Json.format[ImplicitResponse]
   implicit val AccessTokenResponseFormat = Json.format[AccessTokenResponse]
@@ -12,4 +12,4 @@ object json {
 
 trait Oauth extends InMemoryOauthClientStore with DefaultAuthzCodeGenerator with Sha256PasswordEncoder
 
-object Application extends Authorize with AccessToken with Oauth
+object Application extends Authorize with UserApproval with AccessToken with Oauth

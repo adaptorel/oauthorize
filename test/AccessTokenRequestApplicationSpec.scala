@@ -6,10 +6,10 @@ import org.junit.runner._
 import play.api.test._
 import play.api.test.Helpers._
 import play.api.libs.json._
-import oauth.spec.AccessTokenErrors._
+import oauth2.spec.AccessTokenErrors._
 import oauthze.model._
-import oauth.spec.Req._
-import oauth.spec.GrantTypes._
+import oauth2.spec.Req._
+import oauth2.spec.GrantTypes._
 import controllers.Application
 import org.apache.commons.codec.binary.Base64
 
@@ -49,7 +49,7 @@ class AccessTokenRequestApplicationSpec extends Specification {
     }
     
     "respond with 200 and the access token if request is correct" in new WithApplication {
-      import oauth.spec.AccessTokenResponse._
+      import oauth2.spec.AccessTokenResponse._
       val authzResp = route(FakeClientRequest(GET, "/oauth/authorize?client_id=the_client&response_type=code&state=555")).get
       //println(headers(authzResp))
       val P = """.*?code=(\w+)&state=555""".r

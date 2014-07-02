@@ -6,10 +6,10 @@ import play.api.mvc._
 import oauthze.utils._
 import oauthze.service._
 import oauthze.model._
-import oauth.spec.Req._
-import oauth.spec.GrantTypes._
-import oauth.spec.model._
-import oauth.spec.TokenType.bearer
+import oauth2.spec.Req._
+import oauth2.spec.GrantTypes._
+import oauth2.spec.model._
+import oauth2.spec.TokenType.bearer
 import play.api.libs.json.JsValue
 import play.api.libs.json.Json
 
@@ -19,9 +19,9 @@ trait AccessToken extends Controller {
 
   import json._
 
-  def accessToken() = Action { implicit request =>
+  def accessToken = Action { implicit request =>
 
-    import oauth.spec.AccessTokenErrors._
+    import oauth2.spec.AccessTokenErrors._
     import accesstoken._
 
     BasicAuthentication(request) match {
@@ -48,7 +48,7 @@ trait AccessToken extends Controller {
 
   private def processAccessTokenRequest[A](accessTokenRequest: AccessTokenRequest, oauthClient: OauthClient)(implicit request: Request[A]): Either[JsValue, JsValue] = {
 
-    import oauth.spec.AccessTokenErrors._
+    import oauth2.spec.AccessTokenErrors._
 
     getAuthzRequest(accessTokenRequest.authzCode) match {
       case None => Left(err(invalid_request, "invalid authorization code"))
