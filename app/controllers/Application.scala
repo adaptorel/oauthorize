@@ -27,8 +27,8 @@ trait RenderingUtils extends Controller {
 
   import json._
 
-  implicit def renderAccessTokenResponse(r: AccessTokenResponse): SimpleResult = Ok(Json.toJson(r))
-  implicit def renderErrorAsResult(err: Err): SimpleResult = {
+  implicit def renderAccessTokenResponse(r: AccessTokenResponse): Result = Ok(Json.toJson(r))
+  implicit def renderErrorAsResult(err: Err): Result = {
     err.status_code match {
       case StatusCodes.BadRequest => BadRequest(Json.toJson(err))
       case StatusCodes.Redirect => {
