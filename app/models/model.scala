@@ -5,18 +5,20 @@ import oauth2.spec.Req._
 import oauth2.spec.ResponseType
 import oauth2.spec.GrantTypes._
 import oauth2.spec.StatusCodes._
-import oauth2.spec.Err
 import scala.collection.SeqLike
 import oauth2.spec.StatusCodes
+import oauth2.spec.model.ErrorResponse
 
 case class AuthzRequest(clientId: String, responseType: ResponseType, redirectUri: String, authScope: Seq[String], approved: Boolean, state: Option[State] = None) extends AuthzRequestValidation
 case class AccessTokenRequest(grantType: GrantType, authzCode: String, redirectUri: String, clientId: Option[String]) extends AccessTokenRequestValidation
 
-abstract class Token(value: String, client_id: String, scope: Seq[String], validity: Long, created: Long)
-case class AccessToken(value: String, client_id: String, scope: Seq[String], validity: Long, created: Long) extends Token(value, client_id, scope, validity, created)
-case class RefreshToken(value: String, client_id: String, scope: Seq[String], validity: Long, created: Long) extends Token(value, client_id, scope, validity, created)
+case class AccessToken(value: String, client_id: String, scope: Seq[String], validity: Long, created: Long)
+case class RefreshToken(value: String, client_id: String, scope: Seq[String], validity: Long, created: Long)
 
-case class OauthClient(clientId: String, clientSecret: String, scope: Seq[String] = Seq(), authorizedGrantTypes: Seq[String] = Seq(),
+case class Err(error: String, error_description: Option[String] = None, error_uri: Option[String] = None,
+  @transient redirect_uri: Option[String] = None, @transient status_code: Int = StatusCodes.BadRequest) extends ErrorResponse(error, error_description, error_uri)
+
+case class Oauth2Client(clientId: String, clientSecret: String, scope: Seq[String] = Seq(), authorizedGrantTypes: Seq[String] = Seq(),
   redirectUri: String, authorities: Seq[String] = Seq(), accessTokenValidity: Long = 3600, refreshtokenValidity: Long = 604800,
   additionalInfo: Option[String], autoapprove: Boolean = false)
 
@@ -27,7 +29,7 @@ trait AuthzRequestValidation {
 
   import oauth2.spec.AuthzErrors._
 
-  def getError(implicit client: OauthClient): Option[Err] = {
+  def getError(implicit client: Oauth2Client): Option[Err] = {
     errClientId orElse
       errResponseType orElse
       errRedirectUri orElse
@@ -38,13 +40,13 @@ trait AuthzRequestValidation {
     errForEmpty(clientId, err(invalid_request, s"mandatory: $client_id"))
   }
 
-  private def errScope(implicit client: OauthClient) = {
+  private def errScope(implicit client: Oauth2Client) = {
     errForEmpty(authScope, err(invalid_request, s"mandatory: $scope")) orElse {
       if (authScope.foldLeft(false)((acc, current) => acc || !client.scope.contains(current))) Some(err(invalid_request, s"invalid scope value")) else None
     }
   }
 
-  private def errRedirectUri(implicit client: OauthClient) = {
+  private def errRedirectUri(implicit client: Oauth2Client) = {
     errForEmpty(redirectUri, err(invalid_request, s"mandatory: $redirect_uri")) orElse
       (if (redirectUri != client.redirectUri) Some(err(invalid_request, s"missmatched: $redirect_uri")) else None)
   }

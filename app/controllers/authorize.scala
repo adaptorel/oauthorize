@@ -7,7 +7,6 @@ import oauth2.spec.Req._
 import oauth2.spec.GrantTypes._
 import oauth2.spec.AuthzErrors._
 import oauth2.spec.model._
-import oauth2.spec.Err
 import oauthze.model._
 import oauthze.utils._
 import play.api.libs.json.JsValue
@@ -21,7 +20,7 @@ import scala.collection.immutable.ListMap
 import scala.collection.immutable.SortedMap
 import scala.collection.immutable.TreeMap
 
-trait Authorize extends RenderingUtils {
+trait AuthorizationCodeAndImplicitGrants extends RenderingUtils {
 
   this: OauthClientStore with AuthzCodeGenerator with UserApproval =>
 
@@ -32,11 +31,11 @@ trait Authorize extends RenderingUtils {
     val req = AuthzReqForm.bindFromRequest.discardingErrors.get
 
     (req.client_id, req.response_type, req.redirect_uri, req.scope) match {
-      case (Some(clientId), Some(responseType), Some(redirectUri), Some(reqScope)) => {
+      case (Some(clientId), Some(responseType), Some(redirectUri), Some(authzScope)) => {
         getClient(clientId) match {
           case None => err(invalid_request, "unregistered client")
           case Some(client) => {
-            val authzRequest = AuthzRequest(clientId, responseType, redirectUri, reqScope.split(ScopeSeparator).toSeq, client.autoapprove, req.state)
+            val authzRequest = AuthzRequest(clientId, responseType, redirectUri, authzScope.split(ScopeSeparator).toSeq, client.autoapprove, req.state)
             authzRequest.getError(client) match {
               case Some(err) => err
               case None => processAuthzRequest(authzRequest, client) match {
@@ -55,7 +54,7 @@ trait Authorize extends RenderingUtils {
     }
   }
 
-  private def renderImplicitResponse(implicitResponse: ImplicitResponse, client: OauthClient) = {
+  private def renderImplicitResponse(implicitResponse: ImplicitResponse, client: Oauth2Client) = {
     import oauth2.spec.AccessTokenResponse._
     val params = ListMap[String, Any]() +
       (access_token -> implicitResponse.access_token) +
@@ -66,7 +65,7 @@ trait Authorize extends RenderingUtils {
     Redirect(encodedQueryString(client.redirectUri, params, "#"), Map(), 302)
   }
 
-  private def respondWith(authzResponse: AuthzCodeResponse, client: OauthClient) = {
+  private def respondWith(authzResponse: AuthzCodeResponse, client: Oauth2Client) = {
     val authzRequest = getAuthzRequest(authzResponse.code).get
     if (authzRequest.approved) {
       approved(authzResponse.code, authzRequest.state, client)
@@ -75,7 +74,7 @@ trait Authorize extends RenderingUtils {
     }
   }
 
-  private def processAuthzRequest[A](authzRequest: AuthzRequest, oauthClient: OauthClient)(implicit request: Request[A]): Either[Err, Oauth2Response] = {
+  private def processAuthzRequest[A](authzRequest: AuthzRequest, oauthClient: Oauth2Client)(implicit request: Request[A]): Either[Err, Oauth2Response] = {
     val grantType = determineGrantType(authzRequest)
 
     if (!oauthClient.authorizedGrantTypes.contains(grantType)) {

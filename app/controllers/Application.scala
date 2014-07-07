@@ -1,15 +1,15 @@
 package controllers
 
 import oauthze.service._
-import oauth2.spec.Err
 import oauth2.spec.StatusCodes
 import play.api.mvc._
 import play.api.libs.json._
 import oauth2.spec.model._
+import oauthze.model.Err
 
 trait Oauth extends InMemoryOauthClientStore with DefaultAuthzCodeGenerator with BCryptPasswordEncoder
 
-object Application extends Authorize with UserApproval with AccessToken with Oauth
+object Application extends Oauth with AuthorizationCodeAndImplicitGrants with UserApproval with AccessTokenEnpoint
 
 object json {
   implicit val AuthzCodeResponseFormat = Json.format[AuthzCodeResponse]

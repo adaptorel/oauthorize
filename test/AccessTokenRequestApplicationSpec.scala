@@ -31,7 +31,7 @@ class AccessTokenRequestApplicationSpec extends Specification {
     }
 
     s"send 401 if bad client credentials" in new WithApplication {
-      Application.saveClient(OauthClient("the_client", Application.encodePassword("wrongpass"), Seq("global"), Seq(authorization_code), RedirectUri, Seq(), 3600, 3600, None, false))
+      Application.saveClient(Oauth2Client("the_client", Application.encodePassword("wrongpass"), Seq("global"), Seq(authorization_code), RedirectUri, Seq(), 3600, 3600, None, false))
       val resp = route(FakeClientRequestWoRegisteredClient(POST, "/oauth/token")).get
       status(resp) must equalTo(401)
       (contentAsJson(resp) \ "error") must equalTo(JsString(invalid_client))
@@ -68,7 +68,7 @@ class AccessTokenRequestApplicationSpec extends Specification {
 
   private def FakeClientRequest(method: String, path: String) = {
     val pass = Application.encodePassword("pass")
-    Application.saveClient(OauthClient("the_client", pass, Seq("global"), Seq(authorization_code, refresh_token), RedirectUri, Seq(), 3600, 3600, None, true))
+    Application.saveClient(Oauth2Client("the_client", pass, Seq("global"), Seq(authorization_code, refresh_token), RedirectUri, Seq(), 3600, 3600, None, true))
     FakeRequest(method, path).withHeaders("Authorization" -> ("Basic " + Base64.encodeBase64String("the_client:pass".getBytes)))
   }
 

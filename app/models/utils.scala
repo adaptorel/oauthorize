@@ -1,7 +1,5 @@
 package oauthze
 
-import oauth2.spec.Err
-
 object utils {
 
   import play.api.mvc.Request
@@ -9,6 +7,7 @@ object utils {
   import play.api.libs.json.Json
   import oauth2.spec.Error._
   import oauth2.spec.StatusCodes._
+  import oauthze.model.Err
   import java.util.UUID
   import org.apache.commons.codec.binary.Hex
   import org.apache.commons.codec.binary.Base64
@@ -56,7 +55,7 @@ object utils {
 
     def apply[A](request: Request[A]) = {
       request.headers.get("Authorization").filter(_.startsWith("Basic ")) flatMap { authHeader =>
-        BasicAuthentication.fromBase64(authHeader.replaceAll("Basic ", ""))
+        fromBase64(authHeader.replaceAll("Basic ", ""))
       }
     }
 

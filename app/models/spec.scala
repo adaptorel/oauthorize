@@ -6,6 +6,7 @@ object model {
   case class AuthzCodeResponse(code: String, state: Option[String]) extends Oauth2Response
   case class ImplicitResponse(access_token: String, token_type: String = bearer, expires_in: Long, scope: String, state: Option[String]) extends Oauth2Response
   case class AccessTokenResponse(access_token: String, refresh_token: Option[String], token_type: String = bearer, expires_in: Long, scope: String) extends Oauth2Response
+  abstract class ErrorResponse(error: String, error_description: Option[String] = None, error_uri: Option[String] = None) extends Oauth2Response
 }
 
 object GrantTypes {
@@ -42,9 +43,6 @@ object StatusCodes {
   val Unauthorized = 401
   val Redirect = 302
 }
-
-case class Err(error: String, error_description: Option[String] = None, error_uri: Option[String] = None,
-  @transient redirect_uri: Option[String] = None, @transient status_code: Int = StatusCodes.BadRequest)
 
 object Error {
   val error = "error"

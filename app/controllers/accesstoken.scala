@@ -13,9 +13,8 @@ import oauth2.spec.TokenType.bearer
 import play.api.libs.json.JsValue
 import play.api.libs.json.Json
 import oauth2.spec.StatusCodes
-import oauth2.spec.Err
 
-trait AccessToken extends Controller with RenderingUtils {
+trait AccessTokenEnpoint extends Controller with RenderingUtils {
 
   this: OauthClientStore with AuthzCodeGenerator with PasswordEncoder =>
 
@@ -47,7 +46,7 @@ trait AccessToken extends Controller with RenderingUtils {
     }
   }
 
-  private def processAccessTokenRequest[A](accessTokenRequest: AccessTokenRequest, oauthClient: OauthClient)(implicit request: Request[A]): Either[Err, AccessTokenResponse] = {
+  private def processAccessTokenRequest[A](accessTokenRequest: AccessTokenRequest, oauthClient: Oauth2Client)(implicit request: Request[A]): Either[Err, AccessTokenResponse] = {
     import oauth2.spec.AccessTokenErrors._
 
     getAuthzRequest(accessTokenRequest.authzCode) match {

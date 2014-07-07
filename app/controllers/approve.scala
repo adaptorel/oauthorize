@@ -12,10 +12,10 @@ trait UserApproval extends Controller {
 
   this: OauthClientStore =>
 
-  private[controllers] def initiateApproval(authzCode: String, authzRequest: AuthzRequest, client: OauthClient) =
+  private[controllers] def initiateApproval(authzCode: String, authzRequest: AuthzRequest, client: Oauth2Client) =
     Ok(views.html.user_approval(authzCode, authzRequest, client))
 
-  private[controllers] def approved(authzCode: String, maybeState: Option[String], client: OauthClient) = {
+  private[controllers] def approved(authzCode: String, maybeState: Option[String], client: Oauth2Client) = {
     val temp = Map(code -> Seq(authzCode))
     val params = maybeState.map(s => temp + (state -> Seq(s))).getOrElse(temp)
     Redirect(s"${client.redirectUri}", params, 302)
@@ -26,6 +26,7 @@ trait UserApproval extends Controller {
     ApproveModelForm.bindFromRequest.fold(
       formWithErrors => { println(formWithErrors.errorsAsJson); InternalServerError },
       model => {
+        //TODO srsly, .get?
         val authzCode = model.code.get
         val authzRequest = getAuthzRequest(authzCode).get
         val client = getClient(authzRequest.clientId).get
