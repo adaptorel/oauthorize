@@ -35,7 +35,7 @@ trait OauthClientStore {
   def getAuthDataForClient(clientId: String): Option[AccessAndRefreshTokens]
 }
 
-trait InMemoryOauthClientStore extends OauthClientStore {
+private object InMemoryStoreDelegate extends OauthClientStore {
   private val oauthClientStore = scala.collection.mutable.Map[String, Oauth2Client]()
   private val authzCodeStore = scala.collection.mutable.Map[String, AuthzRequest]()
   private val implicitTokenStore = scala.collection.mutable.Map[String, AccessToken]()
@@ -48,6 +48,16 @@ trait InMemoryOauthClientStore extends OauthClientStore {
   override def storeImplicitToken(token: AccessToken, oauthClient: Oauth2Client): AccessToken = { implicitTokenStore.put(token.value, token); token }
   override def storeAccessAndRefreshTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client) = { accessTokenStore.put(oauthClient.clientId, accessAndRefreshTokens); accessAndRefreshTokens }
   override def getAuthDataForClient(clientId: String) = accessTokenStore.get(clientId)
+}
+
+trait InMemoryOauthClientStore extends OauthClientStore {
+  override def saveClient(client: Oauth2Client) = InMemoryStoreDelegate.saveClient(client)
+  override def getClient(clientId: String) = InMemoryStoreDelegate.getClient(clientId)
+  override def storeAuthzCode(authzCode: String, authzRequest: AuthzRequest, oauthClient: Oauth2Client) = InMemoryStoreDelegate.storeAuthzCode(authzCode, authzRequest, oauthClient)
+  override def getAuthzRequest(authzCode: String) = InMemoryStoreDelegate.getAuthzRequest(authzCode)
+  override def storeImplicitToken(token: AccessToken, oauthClient: Oauth2Client): AccessToken = InMemoryStoreDelegate.storeImplicitToken(token, oauthClient)
+  override def storeAccessAndRefreshTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client) = InMemoryStoreDelegate.storeAccessAndRefreshTokens(accessAndRefreshTokens, oauthClient)
+  override def getAuthDataForClient(clientId: String) = InMemoryStoreDelegate.getAuthDataForClient(clientId)
 }
 
 trait AuthzCodeGenerator {

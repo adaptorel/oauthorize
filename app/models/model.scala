@@ -5,7 +5,6 @@ import oauth2.spec.Req._
 import oauth2.spec.ResponseType
 import oauth2.spec.GrantTypes._
 import oauth2.spec.StatusCodes._
-import scala.collection.SeqLike
 import oauth2.spec.StatusCodes
 import oauth2.spec.model.ErrorResponse
 
@@ -15,14 +14,33 @@ case class AccessTokenRequest(grantType: GrantType, authzCode: String, redirectU
 case class AccessToken(value: String, client_id: String, scope: Seq[String], validity: Long, created: Long)
 case class RefreshToken(value: String, client_id: String, scope: Seq[String], validity: Long, created: Long)
 
+trait OauthRequest {
+  def path: String
+  def param(key: String): Option[String]
+  def method: String
+  def params: Map[String, String]
+  override def toString = s"$method '$path' $params"
+}
+
+trait OauthResponse
+case class OauthRedirect(uri: String, params: Map[String, String]) extends OauthResponse
+case class InitiateApproval(authzCode: String, authzRequest: AuthzRequest, client: Oauth2Client) extends OauthResponse
 case class Err(error: String, error_description: Option[String] = None, error_uri: Option[String] = None,
-  @transient redirect_uri: Option[String] = None, @transient status_code: Int = StatusCodes.BadRequest) extends ErrorResponse(error, error_description, error_uri)
+  @transient redirect_uri: Option[String] = None, @transient status_code: Int = StatusCodes.BadRequest) extends ErrorResponse(error, error_description, error_uri) with OauthResponse
 
 case class Oauth2Client(clientId: String, clientSecret: String, scope: Seq[String] = Seq(), authorizedGrantTypes: Seq[String] = Seq(),
   redirectUri: String, authorities: Seq[String] = Seq(), accessTokenValidity: Long = 3600, refreshtokenValidity: Long = 604800,
   additionalInfo: Option[String], autoapprove: Boolean = false)
 
+case class ClientAuthentication(clientId: String, clientSecret: String)
+
 case class AccessAndRefreshTokens(accessToken: AccessToken, refreshToken: Option[RefreshToken])
+
+trait OauthConfig {
+  def authorizeEndpoint: String = "/oauth/authorize"
+  def accessTokenEndpoint: String = "/oauth/token"
+  def processApprovalEndpoint: String = "/oauth/approve"  
+}
 
 trait AuthzRequestValidation {
   this: AuthzRequest =>

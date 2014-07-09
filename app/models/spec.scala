@@ -71,7 +71,7 @@ object AccessTokenErrors {
   val temporarily_unavailable = "temporarily_unavailable"
 }
 
-object AccessTokenResponse {
+object AccessTokenResponseParams {
   val access_token = "access_token"
   val refresh_token = "refresh_token"
   val scope = "scope"

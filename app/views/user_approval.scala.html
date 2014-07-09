@@ -1,14 +1,15 @@
 @(authzCode: String, authzRequest: oauthze.model.AuthzRequest, client: oauthze.model.Oauth2Client)
+@import oauth2.spec.Req
+@import grants.UserApproval
 @main(title = "User approval") {
-    
   <h1>Application '@client.clientId' requires access to '@authzRequest.authScope'</h1>
   <form action="/oauth/approve" method="POST">
-    <input type="hidden" id="code" name="code" value="@authzCode">
+    <input type="hidden" id="@Req.code" name="@Req.code" value="@authzCode">
     @authzRequest.state.map { state =>
-    <input type="hidden" id="state" name="state" value="@state">
+    <input type="hidden" id="@Req.state" name="@Req.state" value="@state">
     }
-  	<input type="submit" value="approve" name="Allow">
-  	<input type="submit" value="deny" name="Deny">
+  	<input type="submit" value="@UserApproval.AllowValue" name="@UserApproval.Allow">
+  	<input type="submit" value="@UserApproval.DenyValue" name="@UserApproval.Deny">
   </form>
     
 }
