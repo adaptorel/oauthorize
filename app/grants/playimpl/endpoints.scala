@@ -13,9 +13,11 @@ import oauth2.spec.AuthzErrors
 
 trait OauthRequestValidatorPlay extends BodyReaderFilter with OauthRequestValidator with Dispatcher with RenderingUtils {
   this: OauthConfig with OauthClientStore with AuthzCodeGenerator =>
-
-  override def bodyProcessor(a: OauthRequest, req: RequestHeader) =
+    
+  override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
+    println(s" -- processing $a")
     getErrors(a).map(renderErrorAsResult)
+  }
   override def matches(request: OauthRequest) = true
 }
 
@@ -24,6 +26,17 @@ trait AccessTokenEndpointPlay extends BodyReaderFilter with AccessTokenEndpoint 
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
     Option(processAccessTokenRequest(oauthRequest, BasicAuthentication(req)) match {
+      case Left(err) => err
+      case Right(res) => res
+    })
+  }
+}
+
+trait ClientCredentialsGrantPlay extends BodyReaderFilter with ClientCredentialsGrant with RenderingUtils {
+  this: OauthConfig with PasswordEncoder with OauthClientStore with AuthzCodeGenerator =>
+
+  override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
+    Option(processClientCredentialsRequest(oauthRequest, BasicAuthentication(req)) match {
       case Left(err) => err
       case Right(res) => res
     })

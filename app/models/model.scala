@@ -10,9 +10,10 @@ import oauth2.spec.model.ErrorResponse
 
 case class AuthzRequest(clientId: String, responseType: ResponseType, redirectUri: String, authScope: Seq[String], approved: Boolean, state: Option[State] = None) extends AuthzRequestValidation
 case class AccessTokenRequest(grantType: GrantType, authzCode: String, redirectUri: String, clientId: Option[String]) extends AccessTokenRequestValidation
+case class ClientCredentialsRequest(client: Oauth2Client, scope: Option[String]) extends ClientCredentialsRequestValidation
 
 case class AccessToken(value: String, client_id: String, scope: Seq[String], validity: Long, created: Long)
-case class RefreshToken(value: String, client_id: String, scope: Seq[String], validity: Long, created: Long)
+case class RefreshToken(value: String, client_id: String, validity: Long, created: Long)
 
 trait OauthRequest {
   def path: String
@@ -124,4 +125,9 @@ trait AccessTokenRequestValidation {
       case _ => Some(error)
     }
   }
+}
+
+trait ClientCredentialsRequestValidation {
+  this: ClientCredentialsRequest =>
+    def getError(): Option[Err] = None
 }

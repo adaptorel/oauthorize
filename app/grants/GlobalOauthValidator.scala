@@ -13,6 +13,7 @@ trait OauthRequestValidator {
   def getErrors(implicit r: OauthRequest): Option[Err] = {
     val res = getAuthorizeRequestError orElse
       getAccessTokenRequestError
+    res.map(err => println(s" -- rejecting $r because of $err"))
     res
   }
 

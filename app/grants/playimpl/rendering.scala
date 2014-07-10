@@ -75,7 +75,7 @@ trait BodyReaderFilter extends EssentialFilter {
   import play.api.mvc.BodyParsers.parse._
   import play.api.mvc.Results.InternalServerError
 
-  def apply(nextFilter: EssentialAction) = new EssentialAction {
+  override def apply(nextFilter: EssentialAction) = new EssentialAction {
     def apply(requestHeader: RequestHeader) = {
       checkFormBody(requestHeader, nextFilter)
     }

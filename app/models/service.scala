@@ -22,7 +22,14 @@ trait BCryptPasswordEncoder extends PasswordEncoder {
   private def paddedRounds = { rounds.toString.reverse.padTo(2, "0").reverse.mkString }
   private def prefix = "$2a$" + paddedRounds + "$"
   override def encodePassword(pwd: String): String = BCrypt.hashpw(pwd, BCrypt.gensalt(rounds, rnd)).substring(7)
-  override def passwordMatches(rawPassword: String, encodedPassword: String): Boolean = BCrypt.checkpw(rawPassword, prefix + encodedPassword)
+  override def passwordMatches(rawPassword: String, encodedPassword: String): Boolean = {
+    (for {
+      raw <- Option(rawPassword)
+      enc <- Option(encodedPassword)
+    } yield {
+      enc.length == (60 - prefix.length) && BCrypt.checkpw(rawPassword, prefix + encodedPassword)
+    }) getOrElse (false)
+  }
 }
 
 trait OauthClientStore {
@@ -62,15 +69,14 @@ trait InMemoryOauthClientStore extends OauthClientStore {
 
 trait AuthzCodeGenerator {
   def generateCode(authzRequest: AuthzRequest): String
-  def generateAccessToken(authzRequest: AuthzRequest, oauthClient: Oauth2Client): AccessToken
-  def generateRefreshToken(authzRequest: AuthzRequest, oauthClient: Oauth2Client): RefreshToken
+  def generateAccessToken(oauthClient: Oauth2Client, scope: Seq[String]): AccessToken
+  def generateRefreshToken(oauthClient: Oauth2Client): RefreshToken
 }
 
 trait DefaultAuthzCodeGenerator extends AuthzCodeGenerator {
   this: PasswordEncoder =>
   override def generateCode(authzRequest: AuthzRequest) = newToken
-  //no refresh token for authorization request token / implicit grant
-  override def generateAccessToken(authzRequest: AuthzRequest, oauthClient: Oauth2Client) = AccessToken(newToken, oauthClient.clientId, authzRequest.authScope, oauthClient.accessTokenValidity, System.currentTimeMillis)
-  override def generateRefreshToken(authzRequest: AuthzRequest, oauthClient: Oauth2Client) = RefreshToken(newToken, oauthClient.clientId, authzRequest.authScope, oauthClient.refreshtokenValidity, System.currentTimeMillis)
+  override def generateAccessToken(oauthClient: Oauth2Client, authScope: Seq[String]) = AccessToken(newToken, oauthClient.clientId, authScope, oauthClient.accessTokenValidity, System.currentTimeMillis)
+  override def generateRefreshToken(oauthClient: Oauth2Client) = RefreshToken(newToken, oauthClient.clientId, oauthClient.refreshtokenValidity, System.currentTimeMillis)
   def newToken = encodePassword(UUID.randomUUID().toString)
 }
