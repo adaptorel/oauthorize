@@ -21,30 +21,26 @@ trait UserApproval extends Dispatcher {
 
   override def matches(r: OauthRequest) = {
     val res = r.path == processApprovalEndpoint &&
-      r.method == "POST"
+      (r.method == "POST" || r.method == "GET")
     res
   }
 
-  private def approved(authzCode: String, maybeState: Option[String], client: Oauth2Client) = {
-    val temp = Map(code -> authzCode)
-    val params = maybeState.map(s => temp + (state -> s)).getOrElse(temp)
-    OauthRedirect(s"${client.redirectUri}", params)
-  }
-
   def processApprove(req: OauthRequest): OauthRedirect = {
+    println(req.params);
     (for {
       authzCode <- req.param(code)
       authzRequest <- getAuthzRequest(authzCode)
       client <- getClient(authzRequest.clientId)
-      isApproved <- req.param(UserApproval.Allow).map(_ == UserApproval.AllowValue)
     } yield {
-      if (isApproved) {
-        approved(authzCode, req.param(state), client)
+      val isApproved = req.param(UserApproval.Allow).map(_ == UserApproval.AllowValue).getOrElse(false)
+      val redirectParams = if (isApproved) {
+        val temp = Map(code -> authzCode)
+        req.param(state).map(s => temp + (state -> s)).getOrElse(temp)
       } else {
         val temp = Map(error -> access_denied)
-        val params = req.param(state).map(s => temp + (state -> s)).getOrElse(temp)
-        OauthRedirect(s"${client.redirectUri}", params)
+        req.param(state).map(s => temp + (state -> s)).getOrElse(temp)
       }
+      OauthRedirect(s"${client.redirectUri}", redirectParams)
     }) getOrElse (throw new IllegalStateException("Process approval failure because of missing code, authzRequest, client or Allow parameter"))
   }
 }

@@ -22,13 +22,14 @@ object json {
 }
 
 trait RenderingUtils extends Controller {
+  
+  this: OauthConfig =>
 
   import json._
 
   implicit def renderAccessTokenResponse(r: AccessTokenResponse): SimpleResult = Ok(Json.toJson(r))
   implicit def renderErrorAsResult(err: Err): SimpleResult = {
     err.status_code match {
-      case StatusCodes.BadRequest => BadRequest(Json.toJson(err))
       case StatusCodes.Redirect => {
         err.redirect_uri.map { url =>
           val c = Json.toJson(err)
@@ -36,14 +37,17 @@ trait RenderingUtils extends Controller {
           Redirect(url, params, err.status_code)
         } getOrElse (BadRequest(Json.toJson(err)))
       }
+      case StatusCodes.BadRequest => BadRequest(Json.toJson(err))
       case StatusCodes.Unauthorized => Unauthorized(Json.toJson(err))
+      case StatusCodes.InternalServerError => InternalServerError(Json.toJson(err))
       case _ => throw new UnsupportedOperationException("Only error status codes should be rendered by the error handler")
     }
   }
 
   implicit def transformReponse(response: OauthResponse) = response match {
     case r: OauthRedirect => Redirect(r.uri, r.params.map(tuple => (tuple._1 -> Seq(tuple._2))), 302)
-    case a: InitiateApproval => Ok(views.html.user_approval(a.authzCode, a.authzRequest, a.client))
+    //case a: InitiateApproval => Ok(views.html.user_approval(a.authzCode, a.authzRequest, a.client))
+    case a: InitiateApproval => Redirect(processApprovalEndpoint, Map("code" -> Seq(a.authzCode)))
   }
 
   implicit def PlayRequestToOauth2Request(request: RequestHeader) = {
@@ -78,6 +82,7 @@ trait BodyReaderFilter extends EssentialFilter {
   override def apply(nextFilter: EssentialAction) = new EssentialAction {
     def apply(requestHeader: RequestHeader) = {
       checkFormBody(requestHeader, nextFilter)
+      //Iteratee.flatten(scala.concurrent.Future(checkFormBody(requestHeader, nextFilter)))
     }
   }
 
@@ -88,7 +93,7 @@ trait BodyReaderFilter extends EssentialFilter {
   private def checkFormBody = checkBody1[Map[String, Seq[String]]](tolerantFormUrlEncoded, identity, bodyProcessor) _
   private def checkBody1[T](parser: BodyParser[T], extractor: (T => Map[String, Seq[String]]), processor: (OauthRequest, RequestHeader) => Option[SimpleResult])(request: RequestHeader, nextAction: EssentialAction) = {
     val firstPartOfBody: Iteratee[Array[Byte], Array[Byte]] =
-      Traversable.take[Array[Byte]](10000) &>> Iteratee.consume[Array[Byte]]()
+      Traversable.take[Array[Byte]](50000) &>> Iteratee.consume[Array[Byte]]()
 
     firstPartOfBody.flatMap { bytes: Array[Byte] =>
       val parsedBody = Enumerator(bytes) |>>> parser(request)
@@ -113,8 +118,10 @@ trait BodyReaderFilter extends EssentialFilter {
       override def param(key: String) = params.get(key)
     }
     if (matches(r)) {
+      println(" -- found matching request, will process with the body processor " + r + ": " + this)
       bodyProcessor(r, request).fold(next(nextAction, bytes, request))(f => Done(f))
     } else {
+      println(" -- didn't find matching request, will just forward " + r + ": " + this)
       next(nextAction, bytes, request)
     }
   }

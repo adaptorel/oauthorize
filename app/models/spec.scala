@@ -42,6 +42,7 @@ object StatusCodes {
   val BadRequest = 400
   val Unauthorized = 401
   val Redirect = 302
+  val InternalServerError = 500
 }
 
 object Error {
