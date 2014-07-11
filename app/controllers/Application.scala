@@ -9,7 +9,7 @@ import play.api.mvc._
 trait OauthMix extends OauthConfig
   with InMemoryOauthClientStore
   with DefaultAuthzCodeGenerator
-  with Sha256PasswordEncoder
+  with BCryptPasswordEncoder
 
 object Oauth extends OauthMix
 
