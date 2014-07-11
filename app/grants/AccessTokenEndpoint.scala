@@ -22,7 +22,7 @@ trait AccessTokenEndpoint extends Dispatcher {
     res
   }
     
-  def processAccessTokenRequest(req: OauthRequest, clientAuth: Option[ClientAuthentication]): Either[Err, AccessTokenResponse] = {
+  def processAccessTokenRequest(req: OauthRequest, clientAuth: Option[ClientAuthentication]): Future[Either[Err, AccessTokenResponse]] = Future {
 
     clientAuth match {
       case None => Left(err(unauthorized_client, "unauthorized client", StatusCodes.Unauthorized))

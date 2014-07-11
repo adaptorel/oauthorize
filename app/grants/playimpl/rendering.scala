@@ -9,6 +9,7 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import oauth2.spec.AccessTokenErrors
 import oauth2.spec.AuthzErrors
 import grants.Dispatcher
+import scala.concurrent.Future
 
 object json {
   implicit val AuthzCodeResponseFormat = Json.format[AuthzCodeResponse]
@@ -46,7 +47,6 @@ trait RenderingUtils extends Controller {
 
   implicit def transformReponse(response: OauthResponse) = response match {
     case r: OauthRedirect => Redirect(r.uri, r.params.map(tuple => (tuple._1 -> Seq(tuple._2))), 302)
-    //case a: InitiateApproval => Ok(views.html.user_approval(a.authzCode, a.authzRequest, a.client))
     case a: InitiateApproval => Redirect(processApprovalEndpoint, Map("code" -> Seq(a.authzCode)))
   }
 
@@ -86,18 +86,18 @@ trait BodyReaderFilter extends EssentialFilter {
     }
   }
 
-  def bodyProcessor(a: OauthRequest, req: RequestHeader): Option[SimpleResult] = {
-    Some(InternalServerError(Json.toJson(oauthze.utils.err(AuthzErrors.server_error, "Not implemented"))))
+  def bodyProcessor(a: OauthRequest, req: RequestHeader): Option[Future[SimpleResult]] = {
+    Some(Future.successful(InternalServerError(Json.toJson(oauthze.utils.err(AuthzErrors.server_error, "Not implemented")))))
   }
 
   private def checkFormBody = checkBody1[Map[String, Seq[String]]](tolerantFormUrlEncoded, identity, bodyProcessor) _
-  private def checkBody1[T](parser: BodyParser[T], extractor: (T => Map[String, Seq[String]]), processor: (OauthRequest, RequestHeader) => Option[SimpleResult])(request: RequestHeader, nextAction: EssentialAction) = {
+  private def checkBody1[T](parser: BodyParser[T], extractor: (T => Map[String, Seq[String]]), processor: (OauthRequest, RequestHeader) => Option[Future[SimpleResult]])(request: RequestHeader, nextAction: EssentialAction) = {
     val firstPartOfBody: Iteratee[Array[Byte], Array[Byte]] =
       Traversable.take[Array[Byte]](50000) &>> Iteratee.consume[Array[Byte]]()
 
     firstPartOfBody.flatMap { bytes: Array[Byte] =>
       val parsedBody = Enumerator(bytes) |>>> parser(request)
-      Iteratee.flatten(parsedBody.map { parseResult =>
+      Iteratee.flatten(parsedBody.flatMap { parseResult =>
         val bodyAsMap = parseResult.fold(
           err => { println(err); Map[String, Seq[String]]() },
           body => ({
@@ -110,7 +110,7 @@ trait BodyReaderFilter extends EssentialFilter {
     }
   }
 
-  private def process(bodyAndQueryStringAsMap: Map[String, Seq[String]], request: RequestHeader, nextAction: EssentialAction, bytes: Array[Byte]): Iteratee[Array[Byte], SimpleResult] = {
+  private def process(bodyAndQueryStringAsMap: Map[String, Seq[String]], request: RequestHeader, nextAction: EssentialAction, bytes: Array[Byte]): Future[Iteratee[Array[Byte], SimpleResult]] = {
     val r = new OauthRequest() {
       override val path = request.path
       override val method = request.method
@@ -119,12 +119,12 @@ trait BodyReaderFilter extends EssentialFilter {
     }
     if (matches(r)) {
       println(" -- found matching request, will process with the body processor " + r + ": " + this)
-      bodyProcessor(r, request).fold(next(nextAction, bytes, request))(f => Done(f))
+      bodyProcessor(r, request).fold(next(nextAction, bytes, request))(f => f.map(Done(_)))
     } else {
       println(" -- didn't find matching request, will just forward " + r + ": " + this)
       next(nextAction, bytes, request)
     }
   }
 
-  private def next(nextAction: EssentialAction, bytes: Array[Byte], request: RequestHeader) = Iteratee.flatten(Enumerator(bytes) |>> nextAction(request))
+  private def next(nextAction: EssentialAction, bytes: Array[Byte], request: RequestHeader) = Future(Iteratee.flatten(Enumerator(bytes) |>> nextAction(request)))
 }

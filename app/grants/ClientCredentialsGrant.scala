@@ -23,7 +23,7 @@ trait ClientCredentialsGrant extends Dispatcher {
       accepts
   }
     
-  def processClientCredentialsRequest(req: OauthRequest, clientAuth: Option[ClientAuthentication]): Either[Err, AccessTokenResponse] = {
+  def processClientCredentialsRequest(req: OauthRequest, clientAuth: Option[ClientAuthentication]): Future[Either[Err, AccessTokenResponse]] = Future {
 
     clientAuth match {
       case None => Left(err(unauthorized_client, "unauthorized client", StatusCodes.Unauthorized))
