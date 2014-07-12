@@ -17,3 +17,5 @@ dist
 .target
 bin
 .DS_Store
+zlibs/oauthorize/.classpath
+zlibs/oauthorize/.project

@@ -8,11 +8,10 @@ import scala.concurrent.Future
 import oauthze.service._
 import oauthze.utils._
 import oauthze.model._
-import _root_.play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 trait AuthorizationCode extends Dispatcher {
 
-  this: OauthConfig with OauthClientStore with AuthzCodeGenerator =>
+  this: OauthConfig with OauthClientStore with AuthzCodeGenerator with ExecutionContextProvider =>
 
   override def matches(r: OauthRequest) = {
     val res = r.path == authorizeEndpoint &&

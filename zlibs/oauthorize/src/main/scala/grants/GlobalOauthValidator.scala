@@ -4,7 +4,6 @@ import oauth2.spec._
 import oauthze.model._
 import oauthze.utils._
 import scala.concurrent.Future
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 trait OauthRequestValidator {
 

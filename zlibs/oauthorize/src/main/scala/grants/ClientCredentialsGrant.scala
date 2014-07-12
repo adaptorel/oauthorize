@@ -7,12 +7,11 @@ import oauth2.spec.Req._
 import oauth2.spec.AccessTokenErrors._
 import oauth2.spec._
 import oauth2.spec.model._
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import scala.concurrent.Future
 
 trait ClientCredentialsGrant extends Dispatcher {
 
-  this: OauthConfig with PasswordEncoder with OauthClientStore with AuthzCodeGenerator =>
+  this: OauthConfig with PasswordEncoder with OauthClientStore with AuthzCodeGenerator with ExecutionContextProvider =>
 
   override def matches(r: OauthRequest) = {
     val accepts = r.path == accessTokenEndpoint &&

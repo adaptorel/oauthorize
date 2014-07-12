@@ -10,11 +10,10 @@ import oauthze.utils._
 import oauthze.model._
 import oauthze.model.OauthRedirect
 import scala.collection.immutable.ListMap
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 trait ImplicitGrant extends Dispatcher {
 
-  this: OauthConfig with OauthClientStore with AuthzCodeGenerator =>
+  this: OauthConfig with OauthClientStore with AuthzCodeGenerator with ExecutionContextProvider =>
 
   override def matches(r: OauthRequest) = {
     val res =

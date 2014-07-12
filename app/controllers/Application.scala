@@ -10,6 +10,9 @@ trait OauthMix extends OauthConfig
   with InMemoryOauthClientStore
   with DefaultAuthzCodeGenerator
   with BCryptPasswordEncoder
+  with ExecutionContextProvider {
+    override val oauthExecutionContext = play.api.libs.concurrent.Execution.Implicits.defaultContext
+  }
 
 object Oauth extends OauthMix
 

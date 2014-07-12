@@ -6,11 +6,10 @@ import oauthze.model._
 import oauthze.service._
 import grants._
 import json._
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import scala.concurrent.Future
 
 trait OauthRequestValidatorPlay extends BodyReaderFilter with OauthRequestValidator with Dispatcher with RenderingUtils {
-  this: OauthConfig with OauthClientStore with AuthzCodeGenerator =>
+  this: OauthConfig with OauthClientStore with AuthzCodeGenerator with ExecutionContextProvider =>
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
     println(s" -- processing $a")
@@ -20,7 +19,7 @@ trait OauthRequestValidatorPlay extends BodyReaderFilter with OauthRequestValida
 }
 
 trait AccessTokenEndpointPlay extends BodyReaderFilter with AccessTokenEndpoint with RenderingUtils {
-  this: OauthConfig with PasswordEncoder with OauthClientStore with AuthzCodeGenerator =>
+  this: OauthConfig with PasswordEncoder with OauthClientStore with AuthzCodeGenerator with ExecutionContextProvider =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
     Option(processAccessTokenRequest(oauthRequest, BasicAuthentication(req)).map(_.fold(err => err, correct => correct)))
@@ -28,7 +27,7 @@ trait AccessTokenEndpointPlay extends BodyReaderFilter with AccessTokenEndpoint 
 }
 
 trait ClientCredentialsGrantPlay extends BodyReaderFilter with ClientCredentialsGrant with RenderingUtils {
-  this: OauthConfig with PasswordEncoder with OauthClientStore with AuthzCodeGenerator =>
+  this: OauthConfig with PasswordEncoder with OauthClientStore with AuthzCodeGenerator with ExecutionContextProvider =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
     Option(processClientCredentialsRequest(oauthRequest, BasicAuthentication(req)).map(_.fold(err => err, correct => correct)))
@@ -36,7 +35,7 @@ trait ClientCredentialsGrantPlay extends BodyReaderFilter with ClientCredentials
 }
 
 trait AuthorizationCodePlay extends BodyReaderFilter with AuthorizationCode with RenderingUtils {
-  this: OauthConfig with OauthClientStore with AuthzCodeGenerator =>
+  this: OauthConfig with OauthClientStore with AuthzCodeGenerator with ExecutionContextProvider =>
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
     Option(processAuthorizeRequest(a).map(_.fold (err => err, good => good)))
@@ -44,7 +43,7 @@ trait AuthorizationCodePlay extends BodyReaderFilter with AuthorizationCode with
 }
 
 trait ImplicitGrantPlay extends BodyReaderFilter with ImplicitGrant with RenderingUtils {
-  this: OauthConfig with OauthClientStore with AuthzCodeGenerator =>
+  this: OauthConfig with OauthClientStore with AuthzCodeGenerator with ExecutionContextProvider =>
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) =
     Option(processImplicitRequest(a).map(_.fold(err => err, good => transformReponse(good))))

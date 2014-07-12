@@ -5,9 +5,7 @@ import oauth2.spec.Error._
 import oauth2.spec.AuthzErrors._
 import oauth2.spec.Req._
 import oauthze.service._
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import scala.concurrent.Future
-import oauth2.spec.Req
 
 object UserApproval {
   val Allow = "Allow"

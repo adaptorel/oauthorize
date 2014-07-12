@@ -80,3 +80,8 @@ trait DefaultAuthzCodeGenerator extends AuthzCodeGenerator {
   override def generateRefreshToken(oauthClient: Oauth2Client) = RefreshToken(newToken, oauthClient.clientId, oauthClient.refreshtokenValidity, System.currentTimeMillis)
   def newToken = encodePassword(UUID.randomUUID().toString)
 }
+
+trait ExecutionContextProvider {
+  import scala.concurrent.ExecutionContext
+  implicit def oauthExecutionContext: ExecutionContext
+}
