@@ -4,7 +4,15 @@ version := "0.1"
 
 organization := "com.oauthorize"
 
-libraryDependencies += "commons-codec" % "commons-codec" % "1.9"
+val specsVersion = "2.3.12"
+
+libraryDependencies ++= Seq(
+  "commons-codec" % "commons-codec" % "1.9",
+  "org.specs2" %% "specs2-core" % specsVersion % "test",
+  "org.specs2" %% "specs2-junit" % specsVersion % "test",
+  "org.specs2" %% "specs2-mock" % specsVersion % "test",
+  "org.specs2" %% "specs2-matcher-extra" % specsVersion % "test"
+  )
 
 publishTo := {
   val localPublishRepo = "/Users/dorel/Work/_bitbucket_maven"
