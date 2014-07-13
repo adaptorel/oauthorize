@@ -13,6 +13,8 @@ libraryDependencies ++= Seq(
   "ws.securesocial" %% "securesocial" % "2.1.3"
 )     
 
+javacOptions ++= Seq("-encoding", "UTF-8")
+
 publishTo := {
   val localPublishRepo = "/Users/dorel/Work/_bitbucket_maven"
   if (version.value.trim.endsWith("SNAPSHOT")) 
