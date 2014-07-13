@@ -7,7 +7,7 @@ import oauth2.spec.ResponseType
 import oauth2.spec.Req._
 import oauth2.spec.AuthzErrors._
 import oauth2.spec.Error._
-import oauthze.model._
+import oauthorize.model._
 
 @RunWith(classOf[JUnitRunner])
 class AuthzRequestSpec extends Specification {

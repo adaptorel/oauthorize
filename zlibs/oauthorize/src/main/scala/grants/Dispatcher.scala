@@ -1,6 +1,6 @@
-package grants
+package oauthorize.grants
 
-import oauthze.model.OauthRequest
+import oauthorize.model.OauthRequest
 
 trait Dispatcher {
   def matches(request: OauthRequest): Boolean

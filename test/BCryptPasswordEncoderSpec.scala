@@ -9,10 +9,10 @@ import oauth2.spec.ResponseType
 import oauth2.spec.Req._
 import oauth2.spec.AuthzErrors._
 import oauth2.spec.Error._
-import oauthze.model._
+import oauthorize.model._
 import play.api.libs.json.Json
 import play.api.libs.json.JsString
-import oauthze.service.BCryptPasswordEncoder
+import oauthorize.service.BCryptPasswordEncoder
 
 @RunWith(classOf[JUnitRunner])
 class BCryptPasswordEncoderSpec extends Specification {

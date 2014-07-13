@@ -1,10 +1,10 @@
-package grants
+package oauthorize.grants
 
-import oauthze.model._
+import oauthorize.model._
 import oauth2.spec.Error._
 import oauth2.spec.AuthzErrors._
 import oauth2.spec.Req._
-import oauthze.service._
+import oauthorize.service._
 import scala.concurrent.Future
 
 object UserApproval {
@@ -17,7 +17,7 @@ object UserApproval {
 }
 
 trait UserApproval extends Dispatcher {
-  this: OauthConfig with OauthClientStore =>
+  this: OauthConfig with Oauth2Store =>
 
   def unmarshal(jsonString: String): Option[AuthzRequest]
 

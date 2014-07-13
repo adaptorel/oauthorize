@@ -1,8 +1,8 @@
-package grants
+package oauthorize.grants
 
-import oauthze.utils._
-import oauthze.model._
-import oauthze.service._
+import oauthorize.utils._
+import oauthorize.model._
+import oauthorize.service._
 import oauth2.spec.Req._
 import oauth2.spec.AccessTokenErrors._
 import oauth2.spec._
@@ -11,7 +11,7 @@ import scala.concurrent.Future
 
 trait ClientCredentialsGrant extends Dispatcher {
 
-  this: OauthConfig with PasswordEncoder with OauthClientStore with AuthzCodeGenerator with ExecutionContextProvider =>
+  this: OauthConfig with PasswordEncoder with Oauth2Store with AuthzCodeGenerator with ExecutionContextProvider =>
 
   override def matches(r: OauthRequest) = {
     val accepts = r.path == accessTokenEndpoint &&

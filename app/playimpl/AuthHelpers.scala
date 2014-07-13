@@ -2,7 +2,7 @@ package grants.playimpl
 
 import play.api.mvc.RequestHeader
 import org.apache.commons.codec.binary.Base64
-import oauthze.model.ClientAuthentication
+import oauthorize.model.ClientAuthentication
 
 object BasicAuthentication {
 

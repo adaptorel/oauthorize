@@ -8,7 +8,7 @@ import play.api.test.Helpers._
 import play.api.libs.json._
 import oauth2.spec.AuthzErrors._
 import oauth2.spec.Req._
-import oauthze.model._
+import oauthorize.model._
 import java.net.URLDecoder
 import play.api.libs.ws.WS
 import scala.concurrent.Await
@@ -16,7 +16,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import oauth2.spec.ResponseType
 import play.api.Play
-import oauthze.service.OauthClientStore
+import oauthorize.service.Oauth2Store
 import app.Oauth
 
 @RunWith(classOf[JUnitRunner])

@@ -1,7 +1,7 @@
-package oauthze.service
+package oauthorize.service
 
-import oauthze.utils._
-import oauthze.model._
+import oauthorize.utils._
+import oauthorize.model._
 import java.util.UUID
 import bcrypt.BCrypt
 import java.security.SecureRandom
@@ -32,7 +32,7 @@ trait BCryptPasswordEncoder extends PasswordEncoder {
   }
 }
 
-trait OauthClientStore {
+trait Oauth2Store {
   def storeClient(client: Oauth2Client): Oauth2Client
   def getClient(clientId: String): Option[Oauth2Client]
   def storeAuthzRequest(authzCode: String, authzRequest: AuthzRequest): AuthzRequest
@@ -42,7 +42,7 @@ trait OauthClientStore {
   def getRefreshToken(value: String): Option[RefreshToken]
 }
 
-private object InMemoryStoreDelegate extends OauthClientStore {
+private object InMemoryStoreDelegate extends Oauth2Store {
   private val oauthClientStore = scala.collection.mutable.Map[String, Oauth2Client]()
   private val authzCodeStore = scala.collection.mutable.Map[String, AuthzRequest]()
   private val implicitTokenStore = scala.collection.mutable.Map[String, AccessToken]()
@@ -57,7 +57,7 @@ private object InMemoryStoreDelegate extends OauthClientStore {
   override def getRefreshToken(value: String) = accessTokenStore.values.find(x => x.refreshToken.map(_.value == value).getOrElse(false)).flatMap(_.refreshToken)
 }
 
-trait InMemoryOauthClientStore extends OauthClientStore {
+trait InMemoryOauth2Store extends Oauth2Store {
   override def storeClient(client: Oauth2Client) = InMemoryStoreDelegate.storeClient(client)
   override def getClient(clientId: String) = InMemoryStoreDelegate.getClient(clientId)
   override def storeAuthzRequest(authzCode: String, authzRequest: AuthzRequest) = InMemoryStoreDelegate.storeAuthzRequest(authzCode, authzRequest)

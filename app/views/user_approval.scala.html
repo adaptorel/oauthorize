@@ -1,6 +1,6 @@
-@(authzCode: String, authzRequest: oauthze.model.AuthzRequest, authzRequestJsonString: String, client: oauthze.model.Oauth2Client)
+@(authzCode: String, authzRequest: oauthorize.model.AuthzRequest, authzRequestJsonString: String, client: oauthorize.model.Oauth2Client)
 @import oauth2.spec.Req
-@import grants.UserApproval
+@import oauthorize.grants.UserApproval
 @main(title = "User approval") {
   <h1>Application '@client.clientId' requires access to '@authzRequest.authScope'</h1>
   <form action="/oauth/approve" method="POST">
@@ -12,5 +12,4 @@
   	<input type="submit" value="@UserApproval.AllowValue" name="@UserApproval.Allow">
   	<input type="submit" value="@UserApproval.DenyValue" name="@UserApproval.Deny">
   </form>
-    
 }

@@ -4,8 +4,8 @@ import org.specs2.mutable._
 import org.specs2.runner._
 import org.junit.runner._
 import oauth2.spec.Req._
-import oauthze.utils._
-import oauthze.model._
+import oauthorize.utils._
+import oauthorize.model._
 import oauth2.spec.GrantTypes._
 import oauth2.spec.AccessTokenErrors._
 import oauth2.spec.Error._

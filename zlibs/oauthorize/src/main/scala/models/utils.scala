@@ -1,10 +1,10 @@
-package oauthze
+package oauthorize
 
 object utils {
 
   import oauth2.spec.Error._
   import oauth2.spec.StatusCodes._
-  import oauthze.model.Err
+  import oauthorize.model.Err
   import java.util.UUID
   import org.apache.commons.codec.binary.Hex
   import java.security.MessageDigest

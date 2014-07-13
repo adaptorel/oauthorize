@@ -1,17 +1,17 @@
-package grants
+package oauthorize.grants
 
 import oauth2.spec.Req._
 import oauth2.spec.AuthzErrors._
 import oauth2.spec.model._
 import oauth2.spec._
 import scala.concurrent.Future
-import oauthze.service._
-import oauthze.utils._
-import oauthze.model._
+import oauthorize.service._
+import oauthorize.utils._
+import oauthorize.model._
 
 trait AuthorizationCode extends Dispatcher {
 
-  this: OauthConfig with OauthClientStore with AuthzCodeGenerator with ExecutionContextProvider =>
+  this: OauthConfig with Oauth2Store with AuthzCodeGenerator with ExecutionContextProvider =>
 
   override def matches(r: OauthRequest) = {
     val res = r.path == authorizeEndpoint &&

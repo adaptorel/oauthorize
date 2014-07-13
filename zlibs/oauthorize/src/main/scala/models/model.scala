@@ -1,6 +1,6 @@
-package oauthze.model
+package oauthorize.model
 
-import oauthze.utils._
+import oauthorize.utils._
 import oauth2.spec.Req._
 import oauth2.spec.ResponseType
 import oauth2.spec.GrantTypes._

@@ -1,13 +1,13 @@
 package app
 
-import oauthze.model._
-import oauthze.service._
+import oauthorize.model._
+import oauthorize.service._
 import grants._
 import grants.playimpl._
 import play.api.mvc._
 
 trait OauthMix extends OauthConfig
-  with InMemoryOauthClientStore
+  with InMemoryOauth2Store
   with DefaultAuthzCodeGenerator
   with BCryptPasswordEncoder
   with ExecutionContextProvider {

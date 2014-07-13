@@ -1,16 +1,14 @@
 package grants.playimpl
 
-import play.api.libs.json._
 import oauth2.spec.model._
-import oauth2.spec.StatusCodes
-import oauthze.model._
+import oauth2.spec._
+import oauthorize.model._
+import oauthorize.grants._
+
+import play.api.libs.json._
 import play.api.mvc._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
-import oauth2.spec.AccessTokenErrors
-import oauth2.spec.AuthzErrors
-import grants.Dispatcher
 import scala.concurrent.Future
-import grants.UserApproval
 
 object json {
   implicit val AuthzCodeResponseFormat = Json.format[AuthzCodeResponse]
@@ -93,7 +91,7 @@ trait BodyReaderFilter extends EssentialFilter {
   }
 
   def bodyProcessor(a: OauthRequest, req: RequestHeader): Option[Future[SimpleResult]] = {
-    Some(Future.successful(InternalServerError(Json.toJson(oauthze.utils.err(AuthzErrors.server_error, "Not implemented")))))
+    Some(Future.successful(InternalServerError(Json.toJson(oauthorize.utils.err(AuthzErrors.server_error, "Not implemented")))))
   }
 
   private def checkFormBody = checkBody1[Map[String, Seq[String]]](tolerantFormUrlEncoded, identity, bodyProcessor) _

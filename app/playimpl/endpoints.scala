@@ -2,15 +2,15 @@ package grants.playimpl
 
 import play.api.mvc._
 import play.api.mvc.Results._
-import oauthze.model._
-import oauthze.service._
-import grants._
+import oauthorize.model._
+import oauthorize.service._
+import oauthorize.grants._
 import json._
 import scala.concurrent.Future
 import play.api.libs.json.Json
 
 trait OauthRequestValidatorPlay extends BodyReaderFilter with OauthRequestValidator with Dispatcher with RenderingUtils {
-  this: OauthConfig with OauthClientStore with AuthzCodeGenerator with ExecutionContextProvider =>
+  this: OauthConfig with Oauth2Store with AuthzCodeGenerator with ExecutionContextProvider =>
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
     println(s" -- processing $a")
@@ -20,7 +20,7 @@ trait OauthRequestValidatorPlay extends BodyReaderFilter with OauthRequestValida
 }
 
 trait AccessTokenEndpointPlay extends BodyReaderFilter with AccessTokenEndpoint with RenderingUtils {
-  this: OauthConfig with PasswordEncoder with OauthClientStore with AuthzCodeGenerator with ExecutionContextProvider =>
+  this: OauthConfig with PasswordEncoder with Oauth2Store with AuthzCodeGenerator with ExecutionContextProvider =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
     Option(processAccessTokenRequest(oauthRequest, BasicAuthentication(req)).map(_.fold(err => err, correct => correct)))
@@ -28,7 +28,7 @@ trait AccessTokenEndpointPlay extends BodyReaderFilter with AccessTokenEndpoint 
 }
 
 trait ClientCredentialsGrantPlay extends BodyReaderFilter with ClientCredentialsGrant with RenderingUtils {
-  this: OauthConfig with PasswordEncoder with OauthClientStore with AuthzCodeGenerator with ExecutionContextProvider =>
+  this: OauthConfig with PasswordEncoder with Oauth2Store with AuthzCodeGenerator with ExecutionContextProvider =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
     Option(processClientCredentialsRequest(oauthRequest, BasicAuthentication(req)).map(_.fold(err => err, correct => correct)))
@@ -36,7 +36,7 @@ trait ClientCredentialsGrantPlay extends BodyReaderFilter with ClientCredentials
 }
 
 trait AuthorizationCodePlay extends BodyReaderFilter with AuthorizationCode with RenderingUtils {
-  this: OauthConfig with OauthClientStore with AuthzCodeGenerator with ExecutionContextProvider =>
+  this: OauthConfig with Oauth2Store with AuthzCodeGenerator with ExecutionContextProvider =>
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
     Option(processAuthorizeRequest(a).map(_.fold(err => err, good => good)))
@@ -44,17 +44,17 @@ trait AuthorizationCodePlay extends BodyReaderFilter with AuthorizationCode with
 }
 
 trait ImplicitGrantPlay extends BodyReaderFilter with ImplicitGrant with RenderingUtils {
-  this: OauthConfig with OauthClientStore with AuthzCodeGenerator with ExecutionContextProvider =>
+  this: OauthConfig with Oauth2Store with AuthzCodeGenerator with ExecutionContextProvider =>
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) =
     Option(processImplicitRequest(a).map(_.fold(err => err, good => transformReponse(good))))
 }
 
 trait UserApprovalPlay extends BodyReaderFilter with UserApproval with RenderingUtils with securesocial.core.SecureSocial {
-  this: OauthConfig with OauthClientStore =>
+  this: OauthConfig with Oauth2Store =>
 
   import oauth2.spec.Req._
-  import oauthze.utils._
+  import oauthorize.utils._
   import oauth2.spec.AuthzErrors._
   import scala.concurrent.Await
   import scala.concurrent.duration._
@@ -100,7 +100,7 @@ trait UserApprovalPlay extends BodyReaderFilter with UserApproval with Rendering
     import securesocial.core.providers.UsernamePasswordProvider.UsernamePassword
     def apply(r: SecuredRequest[_]) = {
       val emailOrElseId = if (r.user.identityId.providerId == UsernamePassword) r.user.identityId.userId else r.user.email.getOrElse(r.user.identityId.userId)
-      oauthze.model.Oauth2User(UserId(emailOrElseId, Option(r.user.identityId.providerId)))
+      oauthorize.model.Oauth2User(UserId(emailOrElseId, Option(r.user.identityId.providerId)))
     }
   }
 }

@@ -1,8 +1,8 @@
-package grants
+package oauthorize.grants
 
 import oauth2.spec._
-import oauthze.model._
-import oauthze.utils._
+import oauthorize.model._
+import oauthorize.utils._
 import scala.concurrent.Future
 
 trait OauthRequestValidator {
