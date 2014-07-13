@@ -3,8 +3,8 @@ package oauthorize.service
 import oauthorize.utils._
 import oauthorize.model._
 import java.util.UUID
-import bcrypt.BCrypt
 import java.security.SecureRandom
+import org.mindrot.jbcrypt.BCrypt
 
 trait PasswordEncoder {
   def encodePassword(pwd: String): String
