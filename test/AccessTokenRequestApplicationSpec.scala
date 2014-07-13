@@ -74,9 +74,10 @@ class AccessTokenRequestApplicationSpec extends PlaySpecification {
       (resp.json \ "error_description") must equalTo(JsString("bad credentials"))
     }
 
+    //TODO This fails now because we must fake a logged in user with SecureSocial for the approval to pass
     "respond with 200 and the access token if request is correct" in new WithServer(port = 3333) {
       import oauth2.spec.AccessTokenResponseParams._
-      Oauth.saveClient(Oauth2Client("the_client", "pass", Seq("global"), Seq(authorization_code, refresh_token), RedirectUri, Seq(), 3600, 3600, None, true))
+      Oauth.storeClient(Oauth2Client("the_client", "pass", Seq("global"), Seq(authorization_code, refresh_token), RedirectUri, Seq(), 3600, 3600, None, true))
       val authzResp = await(WS.url(s"$TestUri/oauth/authorize?client_id=the_client&response_type=code&state=555&scope=global&redirect_uri=$RedirectUri").get)
       val P = """.*?code=(.*)&state=555""".r
       val P(authzCode) = authzResp.header("Location").get
@@ -105,7 +106,7 @@ class AccessTokenRequestApplicationSpec extends PlaySpecification {
   private def postf(url: String, content: (String, String)*)(client: Option[Oauth2Client] = None): Response = {
     val urlEncoded = content.map(pair => URLEncoder.encode(pair._1, "utf-8") + "=" + URLEncoder.encode(pair._2, "utf-8")).mkString("&")
     val pass = Oauth.encodePassword("pass")
-    Oauth.saveClient(client.getOrElse(Oauth2Client("the_client", pass, Seq("global"), Seq(authorization_code, refresh_token), RedirectUri, Seq(), 3600, 3600, None, true)))
+    Oauth.storeClient(client.getOrElse(Oauth2Client("the_client", pass, Seq("global"), Seq(authorization_code, refresh_token), RedirectUri, Seq(), 3600, 3600, None, true)))
     await(WS.url(s"$TestUri$url").withAuth("the_client", "pass", Realm.AuthScheme.BASIC).withHeaders("Content-Type" -> "application/x-www-form-urlencoded").post(urlEncoded))
   }
 }

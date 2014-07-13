@@ -7,6 +7,7 @@ import oauthze.service._
 import grants._
 import json._
 import scala.concurrent.Future
+import play.api.libs.json.Json
 
 trait OauthRequestValidatorPlay extends BodyReaderFilter with OauthRequestValidator with Dispatcher with RenderingUtils {
   this: OauthConfig with OauthClientStore with AuthzCodeGenerator with ExecutionContextProvider =>
@@ -38,7 +39,7 @@ trait AuthorizationCodePlay extends BodyReaderFilter with AuthorizationCode with
   this: OauthConfig with OauthClientStore with AuthzCodeGenerator with ExecutionContextProvider =>
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
-    Option(processAuthorizeRequest(a).map(_.fold (err => err, good => good)))
+    Option(processAuthorizeRequest(a).map(_.fold(err => err, good => good)))
   }
 }
 
@@ -58,23 +59,31 @@ trait UserApprovalPlay extends BodyReaderFilter with UserApproval with Rendering
   import scala.concurrent.Await
   import scala.concurrent.duration._
 
+  override def unmarshal(authzRequestJsonString: String) = Json.parse(authzRequestJsonString).asOpt[AuthzRequest]
+
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
-    def lazyResult = if ("GET" == a.method) displayUserApprovalPage(a) else lazyProcessApprove(a)
+    //def lazyResult(u: Oauth2User) = if ("GET" == a.method) displayUserApprovalPage(a) else lazyProcessApprove(a, u)
+    println(" --- approve endpoint with " + a);
+    def lazyResult(u: Oauth2User) =
+      if ("POST" == a.method || a.param(UserApproval.AutoApproveKey).map(_ == "true").getOrElse(false))
+        lazyProcessApprove(a, u)
+      else displayUserApprovalPage(a)
     Some(secureInvocation(lazyResult, req))
   }
 
-  private def lazyProcessApprove(a: OauthRequest) = {
-    val res = processApprove(a)
+  private def lazyProcessApprove(a: OauthRequest, u: Oauth2User) = {
+    val res = processApprove(a, u)
     Redirect(res.uri, res.params.map(z => (z._1 -> Seq(z._2))), 302)
   }
 
   private def displayUserApprovalPage(a: OauthRequest) = {
     (for {
       authzCode <- a.param(code)
-      authzReq <- getAuthzRequest(authzCode)
+      authzRequestJsonString <- a.param(UserApproval.AuthzRequestKey)
+      authzReq <- unmarshal(authzRequestJsonString)
       client <- getClient(authzReq.clientId)
     } yield {
-      Ok(views.html.user_approval(authzCode, authzReq, client))
+      Ok(views.html.user_approval(authzCode, authzReq, authzRequestJsonString, client))
     }) getOrElse ({
       println("Fatal error when initiating user approval after user authentication! The authorization code, authorization request or the client weren't found. Shouldn't have got here EVER, we're controlling the whole flow!");
       renderErrorAsResult(err(server_error, 500))
@@ -82,7 +91,16 @@ trait UserApprovalPlay extends BodyReaderFilter with UserApproval with Rendering
   }
 
   val WaitTime = 5 seconds
-  private def secureInvocation(block: => Result, req: RequestHeader) = {
-    (SecuredAction { block })(req).run
+  private def secureInvocation(block: (Oauth2User) => Result, req: RequestHeader) = {
+    (SecuredAction { implicit r => block(Oauth2User(r)) })(req).run
+  }
+
+  private object Oauth2User {
+    import securesocial.core.SecuredRequest
+    import securesocial.core.providers.UsernamePasswordProvider.UsernamePassword
+    def apply(r: SecuredRequest[_]) = {
+      val emailOrElseId = if (r.user.identityId.providerId == UsernamePassword) r.user.identityId.userId else r.user.email.getOrElse(r.user.identityId.userId)
+      oauthze.model.Oauth2User(UserId(emailOrElseId, Option(r.user.identityId.providerId)))
+    }
   }
 }

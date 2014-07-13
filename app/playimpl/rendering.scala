@@ -10,11 +10,15 @@ import oauth2.spec.AccessTokenErrors
 import oauth2.spec.AuthzErrors
 import grants.Dispatcher
 import scala.concurrent.Future
+import grants.UserApproval
 
 object json {
   implicit val AuthzCodeResponseFormat = Json.format[AuthzCodeResponse]
   implicit val ImplicitResponseFormat = Json.format[ImplicitResponse]
   implicit val AccessTokenResponseFormat = Json.format[AccessTokenResponse]
+  implicit val UserIdFormat = Json.format[UserId]
+  implicit val Oauth2UserFormat = Json.format[Oauth2User]
+  implicit val AuthzRequestFormat = Json.format[AuthzRequest]
   implicit object ErrorsFormat extends Format[Err] {
     def reads(json: JsValue): JsResult[Err] = Json.reads[Err].reads(json)
     def writes(err: Err): JsValue = Json.writes[Err].writes(err) - "status_code" - "redirect_uri"
@@ -47,8 +51,10 @@ trait RenderingUtils extends Controller {
 
   implicit def transformReponse(response: OauthResponse) = response match {
     case r: OauthRedirect => Redirect(r.uri, r.params.map(tuple => (tuple._1 -> Seq(tuple._2))), 302)
-    case a: InitiateApproval => Redirect(processApprovalEndpoint, Map("code" -> Seq(a.authzCode)))
+    case a: InitiateApproval => Redirect(processApprovalEndpoint, Map("code" -> Seq(a.authzCode), UserApproval.AuthzRequestKey -> jsonParam(a.authzRequest), UserApproval.AutoApproveKey -> Seq(a.client.autoapprove.toString)))
   }
+  
+  private def jsonParam(authzReq: AuthzRequest) = Seq(Json.stringify(Json.toJson(authzReq)))
 
   implicit def PlayRequestToOauth2Request(request: RequestHeader) = {
     BodyParsers.parse.urlFormEncoded(request).run.map { parsed =>

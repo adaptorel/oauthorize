@@ -33,13 +33,13 @@ trait BCryptPasswordEncoder extends PasswordEncoder {
 }
 
 trait OauthClientStore {
-  def saveClient(client: Oauth2Client): Oauth2Client
+  def storeClient(client: Oauth2Client): Oauth2Client
   def getClient(clientId: String): Option[Oauth2Client]
-  def storeAuthzCode(authzCode: String, authzRequest: AuthzRequest, oauthClient: Oauth2Client)
+  def storeAuthzRequest(authzCode: String, authzRequest: AuthzRequest): AuthzRequest
   def getAuthzRequest(authzCode: String): Option[AuthzRequest]
-  def storeImplicitToken(token: AccessToken, oauthClient: Oauth2Client): AccessToken
-  def storeAccessAndRefreshTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client): AccessAndRefreshTokens
-  def getAuthDataForClient(clientId: String): Option[AccessAndRefreshTokens]
+  def storeTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client): AccessAndRefreshTokens
+  def getAccessToken(value: String): Option[AccessToken]
+  def getRefreshToken(value: String): Option[RefreshToken]
 }
 
 private object InMemoryStoreDelegate extends OauthClientStore {
@@ -48,36 +48,36 @@ private object InMemoryStoreDelegate extends OauthClientStore {
   private val implicitTokenStore = scala.collection.mutable.Map[String, AccessToken]()
   private val accessTokenStore = scala.collection.mutable.Map[String, AccessAndRefreshTokens]()
 
-  override def saveClient(client: Oauth2Client) = { oauthClientStore.put(client.clientId, client); client }
+  override def storeClient(client: Oauth2Client) = { oauthClientStore.put(client.clientId, client); client }
   override def getClient(clientId: String) = oauthClientStore.get(clientId)
-  override def storeAuthzCode(authzCode: String, authzRequest: AuthzRequest, oauthClient: Oauth2Client) = { authzCodeStore.put(authzCode, authzRequest) }
+  override def storeAuthzRequest(authzCode: String, authzRequest: AuthzRequest) = { authzCodeStore.put(authzCode, authzRequest); authzRequest }
   override def getAuthzRequest(authzCode: String) = authzCodeStore.get(authzCode)
-  override def storeImplicitToken(token: AccessToken, oauthClient: Oauth2Client): AccessToken = { implicitTokenStore.put(token.value, token); token }
-  override def storeAccessAndRefreshTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client) = { accessTokenStore.put(oauthClient.clientId, accessAndRefreshTokens); accessAndRefreshTokens }
-  override def getAuthDataForClient(clientId: String) = accessTokenStore.get(clientId)
+  override def storeTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client) = { accessTokenStore.put(oauthClient.clientId, accessAndRefreshTokens); accessAndRefreshTokens }
+  override def getAccessToken(value: String) = accessTokenStore.values.find(x => x.accessToken.value == value).map(_.accessToken)
+  override def getRefreshToken(value: String) = accessTokenStore.values.find(x => x.refreshToken.map(_.value == value).getOrElse(false)).flatMap(_.refreshToken)
 }
 
 trait InMemoryOauthClientStore extends OauthClientStore {
-  override def saveClient(client: Oauth2Client) = InMemoryStoreDelegate.saveClient(client)
+  override def storeClient(client: Oauth2Client) = InMemoryStoreDelegate.storeClient(client)
   override def getClient(clientId: String) = InMemoryStoreDelegate.getClient(clientId)
-  override def storeAuthzCode(authzCode: String, authzRequest: AuthzRequest, oauthClient: Oauth2Client) = InMemoryStoreDelegate.storeAuthzCode(authzCode, authzRequest, oauthClient)
+  override def storeAuthzRequest(authzCode: String, authzRequest: AuthzRequest) = InMemoryStoreDelegate.storeAuthzRequest(authzCode, authzRequest)
   override def getAuthzRequest(authzCode: String) = InMemoryStoreDelegate.getAuthzRequest(authzCode)
-  override def storeImplicitToken(token: AccessToken, oauthClient: Oauth2Client): AccessToken = InMemoryStoreDelegate.storeImplicitToken(token, oauthClient)
-  override def storeAccessAndRefreshTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client) = InMemoryStoreDelegate.storeAccessAndRefreshTokens(accessAndRefreshTokens, oauthClient)
-  override def getAuthDataForClient(clientId: String) = InMemoryStoreDelegate.getAuthDataForClient(clientId)
+  override def storeTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client) = InMemoryStoreDelegate.storeTokens(accessAndRefreshTokens, oauthClient)
+  override def getAccessToken(value: String) = InMemoryStoreDelegate.getAccessToken(value)
+  override def getRefreshToken(value: String) = InMemoryStoreDelegate.getRefreshToken(value)
 }
 
 trait AuthzCodeGenerator {
   def generateCode(authzRequest: AuthzRequest): String
-  def generateAccessToken(oauthClient: Oauth2Client, scope: Seq[String]): AccessToken
-  def generateRefreshToken(oauthClient: Oauth2Client): RefreshToken
+  def generateAccessToken(oauthClient: Oauth2Client, scope: Seq[String], userId: Option[String] = None): AccessToken
+  def generateRefreshToken(oauthClient: Oauth2Client, userId: Option[String] = None): RefreshToken
 }
 
 trait DefaultAuthzCodeGenerator extends AuthzCodeGenerator {
   this: PasswordEncoder =>
   override def generateCode(authzRequest: AuthzRequest) = newToken
-  override def generateAccessToken(oauthClient: Oauth2Client, authScope: Seq[String]) = AccessToken(newToken, oauthClient.clientId, authScope, oauthClient.accessTokenValidity, System.currentTimeMillis)
-  override def generateRefreshToken(oauthClient: Oauth2Client) = RefreshToken(newToken, oauthClient.clientId, oauthClient.refreshtokenValidity, System.currentTimeMillis)
+  override def generateAccessToken(oauthClient: Oauth2Client, authScope: Seq[String], userId: Option[String] = None) = AccessToken(newToken, oauthClient.clientId, authScope, oauthClient.accessTokenValidity, System.currentTimeMillis, userId)
+  override def generateRefreshToken(oauthClient: Oauth2Client, userId: Option[String] = None) = RefreshToken(newToken, oauthClient.clientId, oauthClient.refreshtokenValidity, System.currentTimeMillis, userId)
   def newToken = encodePassword(UUID.randomUUID().toString)
 }
 

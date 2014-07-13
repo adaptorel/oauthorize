@@ -61,9 +61,9 @@ trait ImplicitGrant extends Dispatcher {
       Left(err(unsupported_response_type, "unsupported grant type"))
     } else {
       val token = generateAccessToken(oauthClient, authzRequest.authScope)
-      val stored = storeImplicitToken(token, oauthClient)
-      val expiresIn = stored.validity
-      Right(ImplicitResponse(stored.value, bearer, expiresIn, authzRequest.authScope.mkString(ScopeSeparator), authzRequest.state))
+      val stored = storeTokens(AccessAndRefreshTokens(token), oauthClient)
+      val expiresIn = stored.accessToken.validity
+      Right(ImplicitResponse(stored.accessToken.value, bearer, expiresIn, authzRequest.authScope.mkString(ScopeSeparator), authzRequest.state))
     }
   }
 }

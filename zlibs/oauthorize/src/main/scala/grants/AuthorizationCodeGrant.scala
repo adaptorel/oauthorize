@@ -31,7 +31,7 @@ trait AuthorizationCode extends Dispatcher {
               case Some(err) => Left(err)
               case None => processAuthzRequest(authzRequest, client) match {
                 case Left(err) => Left(err)
-                case Right(resp) => Right(renderResponse(resp, client))
+                case Right(authzCode) => Right(InitiateApproval(authzCode, authzRequest, client))
               }
             }
           }
@@ -40,26 +40,14 @@ trait AuthorizationCode extends Dispatcher {
       case _ => Left(err(invalid_request, s"mandatory: $client_id, $response_type, $redirect_uri, $scope"))
     }
   }
-
-  private def renderResponse(authzResponse: AuthzCodeResponse, client: Oauth2Client) = {
-    getAuthzRequest(authzResponse.code) map { authzRequest =>
-      if (authzRequest.approved) {
-        val temp = Map(code -> authzResponse.code)
-        val params = authzRequest.state.map(s => temp + (state -> s)).getOrElse(temp)
-        OauthRedirect(s"${client.redirectUri}", params)
-      } else {
-        InitiateApproval(authzResponse.code, authzRequest, client)
-      }
-    } getOrElse (err(invalid_request, "invalid authorization code"))
-  }
-
-  private def processAuthzRequest(authzRequest: AuthzRequest, oauthClient: Oauth2Client): Either[Err, AuthzCodeResponse] = {
-    if (ResponseType.code != authzRequest.responseType || !oauthClient.authorizedGrantTypes.contains(GrantTypes.authorization_code)) {
+  
+  private def processAuthzRequest(authzRequest: AuthzRequest, oauthClient: Oauth2Client): Either[Err, String] = {
+    if (ResponseType.code != authzRequest.responseType ||
+      !oauthClient.authorizedGrantTypes.contains(GrantTypes.authorization_code)) {
       Left(err(unsupported_response_type, "unsupported grant type"))
     } else {
       val authzCode = generateCode(authzRequest)
-      storeAuthzCode(authzCode, authzRequest, oauthClient)
-      Right(AuthzCodeResponse(authzCode, authzRequest.state))
+      Right(authzCode)
     }
   }
 }

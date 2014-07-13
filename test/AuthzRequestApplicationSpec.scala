@@ -58,7 +58,7 @@ class AuthzRequestApplicationSpec extends PlaySpecification {
     
     "send 400 if redirect_uri is not matching client's" in new WithServer(port=3333) {
       val client = Oauth2Client("a", "a", Seq("internal"), Seq("authorization_code"), RedirectUri, Seq(), 3600, 3600, None, true)
-      Oauth.saveClient(client)
+      Oauth.storeClient(client)
       val resp = await(WS.url(s"$TestUri/oauth/authorize?client_id=a&response_type=code&scope=internal&redirect_uri=wrongredirect").get)
       resp.status must equalTo(400)
       (resp.json \ "error") must equalTo(JsString(invalid_request))
@@ -67,7 +67,7 @@ class AuthzRequestApplicationSpec extends PlaySpecification {
 
     "send 302 if response_type is correct" in new WithServer(port=3333) {
       val client = Oauth2Client("a", "a", Seq("internal"), Seq("authorization_code"), RedirectUri, Seq(), 3600, 3600, None, true)
-      Oauth.saveClient(client)
+      Oauth.storeClient(client)
       val CodeParamRegex = """.*\?code=(.*)&state=555""".r
       val resp = await(WS.url(s"$TestUri/oauth/authorize?client_id=a&response_type=code&state=555&redirect_uri=$RedirectUri&scope=internal").get)
       resp.status must equalTo(302)
@@ -79,7 +79,7 @@ class AuthzRequestApplicationSpec extends PlaySpecification {
     
     "send 302 and hash uri if implicit grant type" in new WithServer(port=3333) {
       val client = Oauth2Client("a", "a", Seq("internal"), Seq("authorization_code", "implicit"), RedirectUri, Seq(), 3600, 3600, None, true)
-      Oauth.saveClient(client)
+      Oauth.storeClient(client)
       val resp = await(WS.url(s"$TestUri/oauth/authorize?client_id=a&response_type=token&state=555&redirect_uri=$RedirectUri&scope=internal").get)
       val expectedUri = resp.header("Location").get
       val Regex = ".*#access_token=(.*)&token_type=(.*)&expires_in=(.*)&scope=(.*)&state=(.*)".r

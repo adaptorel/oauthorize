@@ -50,7 +50,7 @@ trait ClientCredentialsGrant extends Dispatcher {
         val refreshToken = if (ccReq.client.authorizedGrantTypes.contains(GrantTypes.refresh_token)) {
           Some(generateRefreshToken(ccReq.client))
         } else None
-        val stored = storeAccessAndRefreshTokens(AccessAndRefreshTokens(accessToken, refreshToken), ccReq.client)
+        val stored = storeTokens(AccessAndRefreshTokens(accessToken, refreshToken), ccReq.client)
         val response = AccessTokenResponse(stored.accessToken.value, stored.refreshToken.map(_.value), TokenType.bearer, stored.accessToken.validity, ccReq.scope.getOrElse(""))
         Right(response)
       }

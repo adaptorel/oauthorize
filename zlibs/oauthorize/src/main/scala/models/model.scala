@@ -8,12 +8,12 @@ import oauth2.spec.StatusCodes._
 import oauth2.spec.StatusCodes
 import oauth2.spec.model.ErrorResponse
 
-case class AuthzRequest(clientId: String, responseType: ResponseType, redirectUri: String, authScope: Seq[String], approved: Boolean, state: Option[State] = None) extends AuthzRequestValidation
+case class AuthzRequest(clientId: String, responseType: ResponseType, redirectUri: String, authScope: Seq[String], approved: Boolean, state: Option[State] = None, user: Option[Oauth2User] = None) extends AuthzRequestValidation
 case class AccessTokenRequest(grantType: GrantType, authzCode: String, redirectUri: String, clientId: Option[String]) extends AccessTokenRequestValidation
 case class ClientCredentialsRequest(client: Oauth2Client, scope: Option[String]) extends ClientCredentialsRequestValidation
 
-case class AccessToken(value: String, client_id: String, scope: Seq[String], validity: Long, created: Long)
-case class RefreshToken(value: String, client_id: String, validity: Long, created: Long)
+case class AccessToken(value: String, clientId: String, scope: Seq[String], validity: Long, created: Long, userId: Option[String])
+case class RefreshToken(value: String, clientId: String, validity: Long, created: Long, userId: Option[String])
 
 trait OauthRequest {
   def path: String
@@ -33,9 +33,12 @@ case class Oauth2Client(clientId: String, clientSecret: String, scope: Seq[Strin
   redirectUri: String, authorities: Seq[String] = Seq(), accessTokenValidity: Long = 3600, refreshtokenValidity: Long = 604800,
   additionalInfo: Option[String], autoapprove: Boolean = false)
 
+case class UserId(value: String, provider: Option[String])  
+case class Oauth2User(id: UserId)  
+
 case class ClientAuthentication(clientId: String, clientSecret: String)
 
-case class AccessAndRefreshTokens(accessToken: AccessToken, refreshToken: Option[RefreshToken])
+case class AccessAndRefreshTokens(accessToken: AccessToken, refreshToken: Option[RefreshToken] = None)
 
 trait OauthConfig {
   def authorizeEndpoint: String = "/oauth/authorize"

@@ -12,10 +12,14 @@ object UserApproval {
   val Deny = "Deny"
   val AllowValue = "approve"
   val DenyValue = "deny"
+  val AuthzRequestKey = "_authz"
+  val AutoApproveKey = "_auto"
 }
 
 trait UserApproval extends Dispatcher {
   this: OauthConfig with OauthClientStore =>
+
+  def unmarshal(jsonString: String): Option[AuthzRequest]
 
   override def matches(r: OauthRequest) = {
     val res = r.path == processApprovalEndpoint &&
@@ -23,15 +27,16 @@ trait UserApproval extends Dispatcher {
     res
   }
 
-  def processApprove(req: OauthRequest): OauthRedirect = {
-    println(req.params);
+  def processApprove(req: OauthRequest, u: Oauth2User): OauthRedirect = {
+    println(" -- processing approval: " + req)
     (for {
       authzCode <- req.param(code)
-      authzRequest <- getAuthzRequest(authzCode)
+      authzRequestJsonString <- req.param(UserApproval.AuthzRequestKey)
+      authzRequest <- unmarshal(authzRequestJsonString)
       client <- getClient(authzRequest.clientId)
     } yield {
-      val isApproved = req.param(UserApproval.Allow).map(_ == UserApproval.AllowValue).getOrElse(false)
-      val redirectParams = if (isApproved) {
+      val redirectParams = if (isApproved(req)) {
+        storeAuthzRequest(authzCode, authzRequest.copy(user = Option(u)))
         val temp = Map(code -> authzCode)
         req.param(state).map(s => temp + (state -> s)).getOrElse(temp)
       } else {
@@ -40,5 +45,10 @@ trait UserApproval extends Dispatcher {
       }
       OauthRedirect(s"${client.redirectUri}", redirectParams)
     }) getOrElse (throw new IllegalStateException("Process approval failure because of missing code, authzRequest, client or Allow parameter"))
+  }
+
+  private def isApproved(req: OauthRequest) = {
+    req.param(UserApproval.Allow).map(_ == UserApproval.AllowValue).getOrElse(false) ||
+      req.param(UserApproval.AutoApproveKey).map(_ == "true").getOrElse(false)
   }
 }

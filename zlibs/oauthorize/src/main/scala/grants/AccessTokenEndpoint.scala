@@ -57,7 +57,7 @@ trait AccessTokenEndpoint extends Dispatcher {
             val refreshToken = if (oauthClient.authorizedGrantTypes.contains(GrantTypes.refresh_token)) {
               Some(generateRefreshToken(oauthClient))
             } else None
-            val stored = storeAccessAndRefreshTokens(AccessAndRefreshTokens(accessToken, refreshToken), oauthClient)
+            val stored = storeTokens(AccessAndRefreshTokens(accessToken, refreshToken), oauthClient)
             val response = AccessTokenResponse(stored.accessToken.value, stored.refreshToken.map(_.value), TokenType.bearer, stored.accessToken.validity, authzRequest.authScope.mkString(ScopeSeparator))
             Right(response)
           }
