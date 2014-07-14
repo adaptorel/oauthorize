@@ -9,13 +9,18 @@ import scala.concurrent.Future
 trait Oauth2RequestValidator extends Dispatcher {
 
   this: Oauth2Defaults =>
-    
-  override def matches(request: OauthRequest) = true  
+
+  override def matches(request: OauthRequest) = {
+    request.method == authorizeEndpoint ||
+      request.method == accessTokenEndpoint ||
+      request.method == userApprovalEndpoint
+  }
 
   def getErrors(implicit r: OauthRequest): Option[Future[Err]] = {
+    debug("global validation for: " + r)
     val res = getAuthorizeRequestError orElse
       getAccessTokenRequestError
-    res.map(err => debug(s"rejecting $r because of $err"))
+    res.map(err => warn(s"rejecting $r because of $err"))
     res.map(Future(_))
   }
 

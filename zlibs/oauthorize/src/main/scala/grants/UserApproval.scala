@@ -22,7 +22,7 @@ trait UserApproval extends Dispatcher {
   def unmarshal(jsonString: String): Option[AuthzRequest]
 
   override def matches(r: OauthRequest) = {
-    val res = r.path == processApprovalEndpoint &&
+    val res = r.path == userApprovalEndpoint &&
       (r.method == "POST" || r.method == "GET")
     res
   }

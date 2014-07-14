@@ -23,12 +23,12 @@ object AccessTokenEndpoint extends AccessTokenEndpointPlay with OauthMix
 object UserApprovalEndpoint extends UserApprovalPlay with OauthMix
 
 class Oauth2Filters extends WithFilters(
-    Oauth2RequestValidator,
-    AuthorizationCodeGrant,
-    ImplicitGrant,
-    ClientCredentialsGrant,
-    AccessTokenEndpoint,
-    UserApprovalEndpoint) with Oauth2GlobalErorrHandler
+  Oauth2RequestValidator,
+  AuthorizationCodeGrant,
+  ImplicitGrant,
+  ClientCredentialsGrant,
+  AccessTokenEndpoint,
+  UserApprovalEndpoint) with Oauth2GlobalErorrHandler
 
 trait Oauth2GlobalErorrHandler extends GlobalSettings {
   import oauthorize.utils.err
@@ -49,12 +49,12 @@ trait PlayExecutionContextProvider extends ExecutionContextProvider {
 trait PlayLogging extends Logging {
   import play.api.Logger
   lazy val oauthorizeLogger = Logger("oauthorize")
-  
-  override def debug(message: String) = oauthorizeLogger.debug(message)
-  override def warn(message: String) = oauthorizeLogger.debug(message)
-  override def logInfo(message: String) = oauthorizeLogger.info(message)
-  override def logError(message: String) = oauthorizeLogger.error(message)
-  override def logError(message: String, t: Throwable) = oauthorizeLogger.error(message, t)
+
+  override def debug(message: String) = if (oauthorizeLogger.isDebugEnabled) oauthorizeLogger.debug(message)
+  override def warn(message: String) = if (oauthorizeLogger.isWarnEnabled) oauthorizeLogger.warn(message)
+  override def logInfo(message: String) = if (oauthorizeLogger.isInfoEnabled) oauthorizeLogger.info(message)
+  override def logError(message: String) = if (oauthorizeLogger.isErrorEnabled) oauthorizeLogger.error(message)
+  override def logError(message: String, t: Throwable) = if (oauthorizeLogger.isErrorEnabled) oauthorizeLogger.error(message, t)
 }
 
 trait Oauth2DefaultsPlay extends Oauth2Defaults with PlayLogging with PlayExecutionContextProvider

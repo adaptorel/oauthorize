@@ -43,7 +43,7 @@ case class AccessAndRefreshTokens(accessToken: AccessToken, refreshToken: Option
 trait Oauth2Config {
   def authorizeEndpoint: String = "/oauth/authorize"
   def accessTokenEndpoint: String = "/oauth/token"
-  def processApprovalEndpoint: String = "/oauth/approve"  
+  def userApprovalEndpoint: String = "/oauth/approve"  
 }
 
 trait Logging {

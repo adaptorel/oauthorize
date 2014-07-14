@@ -49,7 +49,7 @@ trait RenderingUtils extends Controller {
 
   implicit def transformReponse(response: OauthResponse) = response match {
     case r: OauthRedirect => Redirect(r.uri, r.params.map(tuple => (tuple._1 -> Seq(tuple._2))), 302)
-    case a: InitiateApproval => Redirect(processApprovalEndpoint, Map("code" -> Seq(a.authzCode), UserApproval.AuthzRequestKey -> jsonParam(a.authzRequest), UserApproval.AutoApproveKey -> Seq(a.client.autoapprove.toString)), 302)
+    case a: InitiateApproval => Redirect(userApprovalEndpoint, Map("code" -> Seq(a.authzCode), UserApproval.AuthzRequestKey -> jsonParam(a.authzRequest), UserApproval.AutoApproveKey -> Seq(a.client.autoapprove.toString)), 302)
   }
   
   private def jsonParam(authzReq: AuthzRequest) = Seq(Json.stringify(Json.toJson(authzReq)))

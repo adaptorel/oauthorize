@@ -13,7 +13,7 @@ trait Oauth2RequestValidatorPlay extends BodyReaderFilter with Oauth2RequestVali
   this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator =>
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
-    debug(s"processing $a")
+    logInfo(s"proceed with global validation at: $a")
     getErrors(a).map(maybeErr => maybeErr.map(renderErrorAsResult(_)))
   }
 }
@@ -61,7 +61,7 @@ trait UserApprovalPlay extends BodyReaderFilter with UserApproval with Rendering
   override def unmarshal(authzRequestJsonString: String) = Json.parse(authzRequestJsonString).asOpt[AuthzRequest]
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
-    debug(s"processing user approval: $a");
+    logInfo(s"processing user approval: $a");
     def lazyResult(u: Oauth2User) =
       if ("POST" == a.method || a.param(UserApproval.AutoApproveKey).map(_ == "true").getOrElse(false))
         lazyProcessApprove(a, u)
