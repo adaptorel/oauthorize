@@ -26,7 +26,7 @@ object json {
 
 trait RenderingUtils extends Controller {
   
-  this: OauthConfig =>
+  this: Oauth2Config =>
 
   import json._
 
@@ -49,7 +49,7 @@ trait RenderingUtils extends Controller {
 
   implicit def transformReponse(response: OauthResponse) = response match {
     case r: OauthRedirect => Redirect(r.uri, r.params.map(tuple => (tuple._1 -> Seq(tuple._2))), 302)
-    case a: InitiateApproval => Redirect(processApprovalEndpoint, Map("code" -> Seq(a.authzCode), UserApproval.AuthzRequestKey -> jsonParam(a.authzRequest), UserApproval.AutoApproveKey -> Seq(a.client.autoapprove.toString)))
+    case a: InitiateApproval => Redirect(processApprovalEndpoint, Map("code" -> Seq(a.authzCode), UserApproval.AuthzRequestKey -> jsonParam(a.authzRequest), UserApproval.AutoApproveKey -> Seq(a.client.autoapprove.toString)), 302)
   }
   
   private def jsonParam(authzReq: AuthzRequest) = Seq(Json.stringify(Json.toJson(authzReq)))
@@ -75,23 +75,23 @@ trait RenderingUtils extends Controller {
 
 trait BodyReaderFilter extends EssentialFilter {
 
-  this: Dispatcher =>
+  this: Dispatcher with Logging =>
 
   import json._
   import play.api.libs.iteratee.{ Enumerator, Done, Iteratee, Traversable }
   import play.api.libs.concurrent.Execution.Implicits.defaultContext
   import play.api.mvc.BodyParsers.parse._
   import play.api.mvc.Results.InternalServerError
+  import oauthorize.utils.err
 
   override def apply(nextFilter: EssentialAction) = new EssentialAction {
     def apply(requestHeader: RequestHeader) = {
       checkFormBody(requestHeader, nextFilter)
-      //Iteratee.flatten(scala.concurrent.Future(checkFormBody(requestHeader, nextFilter)))
     }
   }
 
   def bodyProcessor(a: OauthRequest, req: RequestHeader): Option[Future[SimpleResult]] = {
-    Some(Future.successful(InternalServerError(Json.toJson(oauthorize.utils.err(AuthzErrors.server_error, "Not implemented")))))
+    Some(Future.successful(InternalServerError(Json.toJson(err(AuthzErrors.server_error, "Not implemented")))))
   }
 
   private def checkFormBody = checkBody1[Map[String, Seq[String]]](tolerantFormUrlEncoded, identity, bodyProcessor) _
@@ -103,7 +103,7 @@ trait BodyReaderFilter extends EssentialFilter {
       val parsedBody = Enumerator(bytes) |>>> parser(request)
       Iteratee.flatten(parsedBody.flatMap { parseResult =>
         val bodyAsMap = parseResult.fold(
-          err => { println(err); Map[String, Seq[String]]() },
+          msg => { warn(msg.toString); Map[String, Seq[String]]() },
           body => ({
             for {
               values <- extractor(body)
@@ -122,10 +122,10 @@ trait BodyReaderFilter extends EssentialFilter {
       override def param(key: String) = params.get(key)
     }
     if (matches(r)) {
-      println(" -- found matching request, will process with the body processor " + r + ": " + this)
+      debug("found matching request, will process with the body processor " + r + ": " + this)
       bodyProcessor(r, request).fold(next(nextAction, bytes, request))(f => f.map(Done(_)))
     } else {
-      println(" -- didn't find matching request, will just forward " + r + ": " + this)
+      debug("didn't find matching request, will just forward " + r + ": " + this)
       next(nextAction, bytes, request)
     }
   }

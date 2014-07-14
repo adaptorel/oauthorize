@@ -11,7 +11,7 @@ import scala.concurrent.Future
 
 trait AccessTokenEndpoint extends Dispatcher {
 
-  this: OauthConfig with PasswordEncoder with Oauth2Store with AuthzCodeGenerator with ExecutionContextProvider =>
+  this: Oauth2Defaults with PasswordEncoder with Oauth2Store with AuthzCodeGenerator =>
 
   override def matches(r: OauthRequest) = {
     val res = r.path == accessTokenEndpoint &&

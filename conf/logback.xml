@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true" scanPeriod="60 seconds">
+  <conversionRule conversionWord="highlight" converterClass="com.shoeboxed.service.id.HighlightingCompositeConverter"/>
+
+  <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
+    <resetJUL>true</resetJUL>
+  </contextListener>
+
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%highlight(%-5level [%thread] [%X{user-id}:%X{account-id}:%X{oauth-client-id}]) %logger{36} — %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <!-- Use: -DloggingLevel=DEBUG to change to DEBUG for example. -->
+  <root level="${loggingLevel:-INFO}">
+    <appender-ref ref="STDOUT"/>
+  </root>
+
+  <logger name="application" level="INFO"/>
+  <logger name="oauthorize" level="DEBUG"/>
+</configuration>

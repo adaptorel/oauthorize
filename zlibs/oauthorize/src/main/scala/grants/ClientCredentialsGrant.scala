@@ -11,17 +11,16 @@ import scala.concurrent.Future
 
 trait ClientCredentialsGrant extends Dispatcher {
 
-  this: OauthConfig with PasswordEncoder with Oauth2Store with AuthzCodeGenerator with ExecutionContextProvider =>
+  this: Oauth2Defaults with PasswordEncoder with Oauth2Store with AuthzCodeGenerator =>
 
   override def matches(r: OauthRequest) = {
     val accepts = r.path == accessTokenEndpoint &&
       r.method == "POST" &&
       r.param(Req.grant_type)
       .map(v => v == GrantTypes.client_credentials).getOrElse(false)
-      println(" -- looking into " + r + ": " + accepts)
-      accepts
+    accepts
   }
-    
+
   def processClientCredentialsRequest(req: OauthRequest, clientAuth: Option[ClientAuthentication]): Future[Either[Err, AccessTokenResponse]] = Future {
 
     clientAuth match {

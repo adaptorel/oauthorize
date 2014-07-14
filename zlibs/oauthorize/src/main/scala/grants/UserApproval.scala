@@ -17,7 +17,7 @@ object UserApproval {
 }
 
 trait UserApproval extends Dispatcher {
-  this: OauthConfig with Oauth2Store =>
+  this: Oauth2Defaults with Oauth2Store =>
 
   def unmarshal(jsonString: String): Option[AuthzRequest]
 
@@ -28,7 +28,6 @@ trait UserApproval extends Dispatcher {
   }
 
   def processApprove(req: OauthRequest, u: Oauth2User): OauthRedirect = {
-    println(" -- processing approval: " + req)
     (for {
       authzCode <- req.param(code)
       authzRequestJsonString <- req.param(UserApproval.AuthzRequestKey)

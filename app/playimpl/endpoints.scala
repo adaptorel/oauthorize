@@ -9,18 +9,17 @@ import json._
 import scala.concurrent.Future
 import play.api.libs.json.Json
 
-trait OauthRequestValidatorPlay extends BodyReaderFilter with OauthRequestValidator with Dispatcher with RenderingUtils {
-  this: OauthConfig with Oauth2Store with AuthzCodeGenerator with ExecutionContextProvider =>
+trait Oauth2RequestValidatorPlay extends BodyReaderFilter with Oauth2RequestValidator with RenderingUtils {
+  this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator =>
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
-    println(s" -- processing $a")
-    getErrors(a).map(e => Future(renderErrorAsResult(e)))
+    debug(s"processing $a")
+    getErrors(a).map(maybeErr => maybeErr.map(renderErrorAsResult(_)))
   }
-  override def matches(request: OauthRequest) = true
 }
 
 trait AccessTokenEndpointPlay extends BodyReaderFilter with AccessTokenEndpoint with RenderingUtils {
-  this: OauthConfig with PasswordEncoder with Oauth2Store with AuthzCodeGenerator with ExecutionContextProvider =>
+  this: Oauth2Defaults with PasswordEncoder with Oauth2Store with AuthzCodeGenerator =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
     Option(processAccessTokenRequest(oauthRequest, BasicAuthentication(req)).map(_.fold(err => err, correct => correct)))
@@ -28,7 +27,7 @@ trait AccessTokenEndpointPlay extends BodyReaderFilter with AccessTokenEndpoint 
 }
 
 trait ClientCredentialsGrantPlay extends BodyReaderFilter with ClientCredentialsGrant with RenderingUtils {
-  this: OauthConfig with PasswordEncoder with Oauth2Store with AuthzCodeGenerator with ExecutionContextProvider =>
+  this: Oauth2Defaults with PasswordEncoder with Oauth2Store with AuthzCodeGenerator =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
     Option(processClientCredentialsRequest(oauthRequest, BasicAuthentication(req)).map(_.fold(err => err, correct => correct)))
@@ -36,7 +35,7 @@ trait ClientCredentialsGrantPlay extends BodyReaderFilter with ClientCredentials
 }
 
 trait AuthorizationCodePlay extends BodyReaderFilter with AuthorizationCode with RenderingUtils {
-  this: OauthConfig with Oauth2Store with AuthzCodeGenerator with ExecutionContextProvider =>
+  this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator =>
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
     Option(processAuthorizeRequest(a).map(_.fold(err => err, good => good)))
@@ -44,14 +43,14 @@ trait AuthorizationCodePlay extends BodyReaderFilter with AuthorizationCode with
 }
 
 trait ImplicitGrantPlay extends BodyReaderFilter with ImplicitGrant with RenderingUtils {
-  this: OauthConfig with Oauth2Store with AuthzCodeGenerator with ExecutionContextProvider =>
+  this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator =>
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) =
     Option(processImplicitRequest(a).map(_.fold(err => err, good => transformReponse(good))))
 }
 
 trait UserApprovalPlay extends BodyReaderFilter with UserApproval with RenderingUtils with securesocial.core.SecureSocial {
-  this: OauthConfig with Oauth2Store =>
+  this: Oauth2Defaults with Oauth2Store =>
 
   import oauth2.spec.Req._
   import oauthorize.utils._
@@ -62,8 +61,7 @@ trait UserApprovalPlay extends BodyReaderFilter with UserApproval with Rendering
   override def unmarshal(authzRequestJsonString: String) = Json.parse(authzRequestJsonString).asOpt[AuthzRequest]
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
-    //def lazyResult(u: Oauth2User) = if ("GET" == a.method) displayUserApprovalPage(a) else lazyProcessApprove(a, u)
-    println(" --- approve endpoint with " + a);
+    debug(s"processing user approval: $a");
     def lazyResult(u: Oauth2User) =
       if ("POST" == a.method || a.param(UserApproval.AutoApproveKey).map(_ == "true").getOrElse(false))
         lazyProcessApprove(a, u)
@@ -85,7 +83,7 @@ trait UserApprovalPlay extends BodyReaderFilter with UserApproval with Rendering
     } yield {
       Ok(views.html.user_approval(authzCode, authzReq, authzRequestJsonString, client))
     }) getOrElse ({
-      println("Fatal error when initiating user approval after user authentication! The authorization code, authorization request or the client weren't found. Shouldn't have got here EVER, we're controlling the whole flow!");
+      logError("Fatal error when initiating user approval after user authentication! The authorization code, authorization request or the client weren't found. Shouldn't have got here EVER, we're controlling the whole flow!")
       renderErrorAsResult(err(server_error, 500))
     })
   }

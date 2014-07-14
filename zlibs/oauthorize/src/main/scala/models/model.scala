@@ -40,11 +40,30 @@ case class ClientAuthentication(clientId: String, clientSecret: String)
 
 case class AccessAndRefreshTokens(accessToken: AccessToken, refreshToken: Option[RefreshToken] = None)
 
-trait OauthConfig {
+trait Oauth2Config {
   def authorizeEndpoint: String = "/oauth/authorize"
   def accessTokenEndpoint: String = "/oauth/token"
   def processApprovalEndpoint: String = "/oauth/approve"  
 }
+
+trait Logging {
+  def debug(message: String)
+  def warn(message: String)
+  def logInfo(message: String)
+  def logError(message: String)
+  def logError(message: String, t: Throwable)
+}
+
+trait Dispatcher {
+  def matches(request: OauthRequest): Boolean
+}
+
+trait ExecutionContextProvider {
+  import scala.concurrent.ExecutionContext
+  implicit def oauthExecutionContext: ExecutionContext
+}
+
+trait Oauth2Defaults extends Oauth2Config with ExecutionContextProvider with Logging
 
 trait AuthzRequestValidation {
   this: AuthzRequest =>

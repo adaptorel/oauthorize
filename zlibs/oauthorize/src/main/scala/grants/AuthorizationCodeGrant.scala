@@ -11,7 +11,7 @@ import oauthorize.model._
 
 trait AuthorizationCode extends Dispatcher {
 
-  this: OauthConfig with Oauth2Store with AuthzCodeGenerator with ExecutionContextProvider =>
+  this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator =>
 
   override def matches(r: OauthRequest) = {
     val res = r.path == authorizeEndpoint &&

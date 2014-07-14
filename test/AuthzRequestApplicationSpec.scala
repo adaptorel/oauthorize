@@ -65,6 +65,7 @@ class AuthzRequestApplicationSpec extends PlaySpecification {
       (resp.json \ "error_description") must equalTo(JsString(s"missmatched: $redirect_uri"))
     }
 
+    //TODO This fails now because we must fake a logged in user with SecureSocial for the approval to pass
     "send 302 if response_type is correct" in new WithServer(port=3333) {
       val client = Oauth2Client("a", "a", Seq("internal"), Seq("authorization_code"), RedirectUri, Seq(), 3600, 3600, None, true)
       Oauth.storeClient(client)

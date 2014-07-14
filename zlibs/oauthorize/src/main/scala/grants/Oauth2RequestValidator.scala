@@ -3,17 +3,20 @@ package oauthorize.grants
 import oauth2.spec._
 import oauthorize.model._
 import oauthorize.utils._
+import oauthorize.service._
 import scala.concurrent.Future
 
-trait OauthRequestValidator {
+trait Oauth2RequestValidator extends Dispatcher {
 
-  this: OauthConfig =>
+  this: Oauth2Defaults =>
+    
+  override def matches(request: OauthRequest) = true  
 
-  def getErrors(implicit r: OauthRequest): Option[Err] = {
+  def getErrors(implicit r: OauthRequest): Option[Future[Err]] = {
     val res = getAuthorizeRequestError orElse
       getAccessTokenRequestError
-    res.map(err => println(s" -- rejecting $r because of $err"))
-    res
+    res.map(err => debug(s"rejecting $r because of $err"))
+    res.map(Future(_))
   }
 
   private def getAuthorizeRequestError(implicit r: OauthRequest) = {
