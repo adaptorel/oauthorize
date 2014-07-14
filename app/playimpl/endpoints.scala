@@ -26,6 +26,14 @@ trait AccessTokenEndpointPlay extends BodyReaderFilter with AccessTokenEndpoint 
   }
 }
 
+trait RefreshTokenEndpointPlay extends BodyReaderFilter with RefreshTokenEndpoint with RenderingUtils {
+  this: Oauth2Defaults with PasswordEncoder with Oauth2Store with AuthzCodeGenerator =>
+
+  override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
+    Option(processRefreshTokenRequest(oauthRequest, BasicAuthentication(req)).map(_.fold(err => err, correct => correct)))
+  }
+}
+
 trait ClientCredentialsGrantPlay extends BodyReaderFilter with ClientCredentialsGrant with RenderingUtils {
   this: Oauth2Defaults with PasswordEncoder with Oauth2Store with AuthzCodeGenerator =>
 
@@ -42,11 +50,18 @@ trait AuthorizationCodePlay extends BodyReaderFilter with AuthorizationCode with
   }
 }
 
-trait ImplicitGrantPlay extends BodyReaderFilter with ImplicitGrant with RenderingUtils {
+trait ImplicitGrantPlay extends BodyReaderFilter with ImplicitGrant with RenderingUtils with securesocial.core.SecureSocial {
   this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator =>
 
-  override def bodyProcessor(a: OauthRequest, req: RequestHeader) =
-    Option(processImplicitRequest(a).map(_.fold(err => err, good => transformReponse(good))))
+  override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
+    def process(u: Oauth2User): SimpleResult = processImplicitRequest(a, u).fold(err => err, good => transformReponse(good))
+    Some(secureInvocation(process, req))
+  }
+
+  private def secureInvocation(block: (Oauth2User) => Result, req: RequestHeader) = {
+    (SecuredAction { implicit r => block(UserExtractor(r)) })(req).run
+  }
+
 }
 
 trait UserApprovalPlay extends BodyReaderFilter with UserApproval with RenderingUtils with securesocial.core.SecureSocial {
@@ -88,17 +103,16 @@ trait UserApprovalPlay extends BodyReaderFilter with UserApproval with Rendering
     })
   }
 
-  val WaitTime = 5 seconds
   private def secureInvocation(block: (Oauth2User) => Result, req: RequestHeader) = {
-    (SecuredAction { implicit r => block(Oauth2User(r)) })(req).run
+    (SecuredAction { implicit r => block(UserExtractor(r)) })(req).run
   }
+}
 
-  private object Oauth2User {
-    import securesocial.core.SecuredRequest
-    import securesocial.core.providers.UsernamePasswordProvider.UsernamePassword
-    def apply(r: SecuredRequest[_]) = {
-      val emailOrElseId = if (r.user.identityId.providerId == UsernamePassword) r.user.identityId.userId else r.user.email.getOrElse(r.user.identityId.userId)
-      oauthorize.model.Oauth2User(UserId(emailOrElseId, Option(r.user.identityId.providerId)))
-    }
+private[playimpl] object UserExtractor {
+  import securesocial.core.SecuredRequest
+  import securesocial.core.providers.UsernamePasswordProvider.UsernamePassword
+  def apply(r: SecuredRequest[_]) = {
+    val emailOrElseId = if (r.user.identityId.providerId == UsernamePassword) r.user.identityId.userId else r.user.email.getOrElse(r.user.identityId.userId)
+    oauthorize.model.Oauth2User(UserId(emailOrElseId, Option(r.user.identityId.providerId)))
   }
 }

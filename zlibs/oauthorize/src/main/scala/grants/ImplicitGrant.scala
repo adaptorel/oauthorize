@@ -23,7 +23,7 @@ trait ImplicitGrant extends Dispatcher {
     res
   }
 
-  def processImplicitRequest(req: OauthRequest): Future[Either[Err, OauthResponse]] = Future {
+  def processImplicitRequest(req: OauthRequest, user: Oauth2User): Either[Err, OauthResponse] = {
     (req.param(client_id), req.param(response_type), req.param(redirect_uri), req.param(scope)) match {
       case (Some(clientId), Some(responseType), Some(redirectUri), Some(authzScope)) => {
         getClient(clientId) match {
@@ -32,7 +32,7 @@ trait ImplicitGrant extends Dispatcher {
             val authzRequest = AuthzRequest(clientId, responseType, redirectUri, authzScope.split(ScopeSeparator).toSeq, client.autoapprove, req.param(state))
             authzRequest.getError(client) match {
               case Some(err) => Left(err)
-              case None => processImplicitRequest(authzRequest, client) match {
+              case None => processImplicitRequest(authzRequest, client, user) match {
                 case Left(err) => Left(err)
                 case Right(resp) => Right(renderImplicitResponse(resp, client))
               }
@@ -56,11 +56,11 @@ trait ImplicitGrant extends Dispatcher {
   }
 
   import oauth2.spec.TokenType.bearer
-  private def processImplicitRequest(authzRequest: AuthzRequest, oauthClient: Oauth2Client): Either[Err, ImplicitResponse] = {
-    if (ResponseType.token != authzRequest.responseType || !oauthClient.authorizedGrantTypes.contains(GrantTypes.implic1t)) {
+  private def processImplicitRequest(authzRequest: AuthzRequest, oauthClient: Oauth2Client, user: Oauth2User): Either[Err, ImplicitResponse] = {
+    if (ResponseType.token != authzRequest.responseType && !oauthClient.authorizedGrantTypes.contains(GrantTypes.implic1t)) {
       Left(err(unsupported_response_type, "unsupported grant type"))
     } else {
-      val token = generateAccessToken(oauthClient, authzRequest.authScope)
+      val token = generateAccessToken(oauthClient, authzRequest.authScope, Option(user.id))
       val stored = storeTokens(AccessAndRefreshTokens(token), oauthClient)
       val expiresIn = stored.accessToken.validity
       Right(ImplicitResponse(stored.accessToken.value, bearer, expiresIn, authzRequest.authScope.mkString(ScopeSeparator), authzRequest.state))

@@ -2,18 +2,26 @@ package oauthorize.model
 
 import oauthorize.utils._
 import oauth2.spec.Req._
-import oauth2.spec.ResponseType
-import oauth2.spec.GrantTypes._
+import oauth2.spec._
 import oauth2.spec.StatusCodes._
-import oauth2.spec.StatusCodes
 import oauth2.spec.model.ErrorResponse
 
 case class AuthzRequest(clientId: String, responseType: ResponseType, redirectUri: String, authScope: Seq[String], approved: Boolean, state: Option[State] = None, user: Option[Oauth2User] = None) extends AuthzRequestValidation
 case class AccessTokenRequest(grantType: GrantType, authzCode: String, redirectUri: String, clientId: Option[String]) extends AccessTokenRequestValidation
+case class RefreshTokenRequest(grantType: GrantType, refreshToken: String) extends RefreshTokenRequestValidation
 case class ClientCredentialsRequest(client: Oauth2Client, scope: Option[String]) extends ClientCredentialsRequestValidation
 
-case class AccessToken(value: String, clientId: String, scope: Seq[String], validity: Long, created: Long, userId: Option[String])
-case class RefreshToken(value: String, clientId: String, validity: Long, created: Long, userId: Option[String])
+object ExpirationHelper {
+  def isExpired(token: { def validity: Long; def created: Long }): Boolean = { token.created + token.validity * 1000 < System.currentTimeMillis }
+}
+case class AccessToken(value: String, clientId: String, scope: Seq[String], validity: Long, created: Long, userId: Option[UserId]) {
+  def isExpired = ExpirationHelper.isExpired(this)
+}
+case class RefreshToken(value: String, clientId: String, tokenScope: Seq[String], validity: Long, created: Long, userId: Option[UserId]) {
+  def isExpired = ExpirationHelper.isExpired(this)
+}
+
+case class AccessAndRefreshTokens(accessToken: AccessToken, refreshToken: Option[RefreshToken] = None)
 
 trait OauthRequest {
   def path: String
@@ -33,17 +41,15 @@ case class Oauth2Client(clientId: String, clientSecret: String, scope: Seq[Strin
   redirectUri: String, authorities: Seq[String] = Seq(), accessTokenValidity: Long = 3600, refreshtokenValidity: Long = 604800,
   additionalInfo: Option[String], autoapprove: Boolean = false)
 
-case class UserId(value: String, provider: Option[String])  
-case class Oauth2User(id: UserId)  
+case class UserId(value: String, provider: Option[String])
+case class Oauth2User(id: UserId)
 
 case class ClientAuthentication(clientId: String, clientSecret: String)
-
-case class AccessAndRefreshTokens(accessToken: AccessToken, refreshToken: Option[RefreshToken] = None)
 
 trait Oauth2Config {
   def authorizeEndpoint: String = "/oauth/authorize"
   def accessTokenEndpoint: String = "/oauth/token"
-  def userApprovalEndpoint: String = "/oauth/approve"  
+  def userApprovalEndpoint: String = "/oauth/approve"
 }
 
 trait Logging {
@@ -64,6 +70,17 @@ trait ExecutionContextProvider {
 }
 
 trait Oauth2Defaults extends Oauth2Config with ExecutionContextProvider with Logging
+
+object ValidationUtils {
+  def errForEmpty(value: { def isEmpty: Boolean }, error: Err) = {
+    Option(value).filter(!_.isEmpty) match {
+      case Some(s: Any) => None
+      case _ => Some(error)
+    }
+  }
+}
+
+import ValidationUtils._
 
 trait AuthzRequestValidation {
   this: AuthzRequest =>
@@ -100,13 +117,6 @@ trait AuthzRequestValidation {
       }
     }
   }
-
-  private def errForEmpty(value: { def isEmpty: Boolean }, error: Err) = {
-    Option(value).filter(!_.isEmpty) match {
-      case Some(s: Any) => None
-      case _ => Some(error)
-    }
-  }
 }
 
 trait AccessTokenRequestValidation {
@@ -127,7 +137,7 @@ trait AccessTokenRequestValidation {
 
   private def errGrantType = {
     errForEmpty(grantType, err(invalid_request, s"mandatory: $grant_type")) orElse {
-      if (grantType != authorization_code) Some(err(invalid_grant, s"mandatory: $grant_type in ['$authorization_code']")) else None
+      if (grantType != GrantTypes.authorization_code) Some(err(invalid_grant, s"mandatory: $grant_type in ['${GrantTypes.authorization_code}']")) else None
     }
   }
 
@@ -140,16 +150,30 @@ trait AccessTokenRequestValidation {
       if (authzRequest.redirectUri != redirectUri) Some(err(invalid_request, s"mismatched: $redirect_uri")) else None
     }
   }
+}
 
-  private def errForEmpty(value: String, error: Err) = {
-    Option(value).filterNot(_.trim.isEmpty) match {
-      case Some(s: String) => None
-      case _ => Some(error)
+trait RefreshTokenRequestValidation {
+  this: RefreshTokenRequest =>
+
+  import oauth2.spec.AccessTokenErrors._
+
+  def getError: Option[Err] = {
+    errGrantType orElse
+      errRefreshToken
+  }
+
+  private def errGrantType = {
+    errForEmpty(grantType, err(invalid_request, s"mandatory: $grant_type")) orElse {
+      if (grantType != refresh_token) Some(err(invalid_grant, s"mandatory: $grant_type in ['$refresh_token']")) else None
     }
+  }
+
+  private def errRefreshToken = {
+    errForEmpty(refreshToken, err(invalid_request, s"mandatory: $refresh_token"))
   }
 }
 
 trait ClientCredentialsRequestValidation {
   this: ClientCredentialsRequest =>
-    def getError(): Option[Err] = None
+  def getError(): Option[Err] = None
 }

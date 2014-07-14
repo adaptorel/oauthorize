@@ -69,14 +69,14 @@ trait InMemoryOauth2Store extends Oauth2Store {
 
 trait AuthzCodeGenerator {
   def generateCode(authzRequest: AuthzRequest): String
-  def generateAccessToken(oauthClient: Oauth2Client, scope: Seq[String], userId: Option[String] = None): AccessToken
-  def generateRefreshToken(oauthClient: Oauth2Client, userId: Option[String] = None): RefreshToken
+  def generateAccessToken(oauthClient: Oauth2Client, scope: Seq[String], userId: Option[UserId]): AccessToken
+  def generateRefreshToken(oauthClient: Oauth2Client, scope: Seq[String], userId: Option[UserId]): RefreshToken
 }
 
 trait DefaultAuthzCodeGenerator extends AuthzCodeGenerator {
   this: PasswordEncoder =>
   override def generateCode(authzRequest: AuthzRequest) = newToken
-  override def generateAccessToken(oauthClient: Oauth2Client, authScope: Seq[String], userId: Option[String] = None) = AccessToken(newToken, oauthClient.clientId, authScope, oauthClient.accessTokenValidity, System.currentTimeMillis, userId)
-  override def generateRefreshToken(oauthClient: Oauth2Client, userId: Option[String] = None) = RefreshToken(newToken, oauthClient.clientId, oauthClient.refreshtokenValidity, System.currentTimeMillis, userId)
+  override def generateAccessToken(oauthClient: Oauth2Client, authScope: Seq[String], userId: Option[UserId]) = AccessToken(newToken, oauthClient.clientId, authScope, oauthClient.accessTokenValidity, System.currentTimeMillis, userId)
+  override def generateRefreshToken(oauthClient: Oauth2Client, tokenScope: Seq[String], userId: Option[UserId]) = RefreshToken(newToken, oauthClient.clientId, tokenScope, oauthClient.refreshtokenValidity, System.currentTimeMillis, userId)
   def newToken = encodePassword(UUID.randomUUID().toString)
 }

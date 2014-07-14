@@ -53,9 +53,9 @@ trait AccessTokenEndpoint extends Dispatcher {
              * TODO do we care about any previously stored data since he's started
              * the flow from the beginning, with the authorization code and everything?
              */
-            val accessToken = generateAccessToken(oauthClient, authzRequest.authScope)
+            val accessToken = generateAccessToken(oauthClient, authzRequest.authScope, authzRequest.user.map(_.id))
             val refreshToken = if (oauthClient.authorizedGrantTypes.contains(GrantTypes.refresh_token)) {
-              Some(generateRefreshToken(oauthClient))
+              Some(generateRefreshToken(oauthClient, authzRequest.authScope, authzRequest.user.map(_.id)))
             } else None
             val stored = storeTokens(AccessAndRefreshTokens(accessToken, refreshToken), oauthClient)
             val response = AccessTokenResponse(stored.accessToken.value, stored.refreshToken.map(_.value), TokenType.bearer, stored.accessToken.validity, authzRequest.authScope.mkString(ScopeSeparator))

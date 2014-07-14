@@ -20,6 +20,7 @@ object AuthorizationCodeGrant extends AuthorizationCodePlay with OauthMix
 object ImplicitGrant extends ImplicitGrantPlay with OauthMix
 object ClientCredentialsGrant extends ClientCredentialsGrantPlay with OauthMix
 object AccessTokenEndpoint extends AccessTokenEndpointPlay with OauthMix
+object RefreshTokenEndpoint extends RefreshTokenEndpointPlay with OauthMix
 object UserApprovalEndpoint extends UserApprovalPlay with OauthMix
 
 class Oauth2Filters extends WithFilters(
@@ -28,6 +29,7 @@ class Oauth2Filters extends WithFilters(
   ImplicitGrant,
   ClientCredentialsGrant,
   AccessTokenEndpoint,
+  RefreshTokenEndpoint,
   UserApprovalEndpoint) with Oauth2GlobalErorrHandler
 
 trait Oauth2GlobalErorrHandler extends GlobalSettings {

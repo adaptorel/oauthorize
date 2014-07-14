@@ -23,70 +23,48 @@ import play.api.libs.ws.Response
 import play.api.libs.ws.Response
 
 @RunWith(classOf[JUnitRunner])
-class AccessTokenRequestApplicationSpec extends PlaySpecification {
+class RefreshTokenRequestApplicationSpec extends PlaySpecification {
 
-  val RedirectUri = "http://www.host.com/cb"
+  val RedirectUri = "redirecturi"
   val port = 3333
   val TestUri = s"http://localhost:$port"
 
   "Application" should {
 
-    s"send 400 if not POST" in new WithServer(port = 3333) {
-      val resp = await(WS.url(s"$TestUri/oauth/token").get)
+    s"send 400 if '$refresh_token' param is missing" in new WithServer(port = 3333) {
+      val resp = postf1("/oauth/token", grant_type -> GrantTypes.refresh_token)
       resp.status must equalTo(400)
       (resp.json \ "error") must equalTo(JsString(invalid_request))
-      (resp.json \ "error_description") must equalTo(JsString("mandatory: HTTPS POST"))
-    }    
-    
-    s"send 400 if '$grant_type' param is missing" in new WithServer(port = 3333) {
-      val resp = post("/oauth/token")
-      resp.status must equalTo(400)
-      (resp.json \ "error") must equalTo(JsString(invalid_request))
-      (resp.json \ "error_description") must equalTo(JsString("invalid grant type"))
-    }
-    
-    s"send 400 if '$grant_type' param is invalid" in new WithServer(port = 3333) {
-      val resp = postf1("/oauth/token", grant_type -> "whatever", code -> "whatever")
-      resp.status must equalTo(400)
-      (resp.json \ "error") must equalTo(JsString(invalid_request))
-      (resp.json \ "error_description") must equalTo(JsString("invalid grant type"))
-    }    
-
-    s"send 400 if '$code' param is missing" in new WithServer(port = 3333) {
-      val resp = postf1("/oauth/token", grant_type -> GrantTypes.authorization_code)
-      resp.status must equalTo(400)
-      (resp.json \ "error") must equalTo(JsString(invalid_request))
-      (resp.json \ "error_description") must equalTo(JsString(s"mandatory: $code parameter"))
+      (resp.json \ "error_description") must equalTo(JsString(s"mandatory: $grant_type, $refresh_token"))
     }
 
     s"send 401 if unregistered client" in new WithServer(port = 3333) {
-      val resp = postfWoRegisteredClient("/oauth/token", grant_type -> GrantTypes.authorization_code, code -> "whatever", redirect_uri -> RedirectUri)
+      val resp = postfWoRegisteredClient("/oauth/token", grant_type -> GrantTypes.refresh_token, refresh_token -> "whatever")
       resp.status must equalTo(401)
       (resp.json \ "error") must equalTo(JsString(invalid_client))
       (resp.json \ "error_description") must equalTo(JsString("unregistered client"))
     }
 
     s"send 401 if bad client credentials" in new WithServer(port = 3333) {
-      val client = Some(Oauth2Client("the_client", Oauth.encodePassword("wrongpass"), Seq("global"), Seq(GrantTypes.authorization_code), RedirectUri, Seq(), 3600, 3600, None, false))
-      val resp = postf("/oauth/token", grant_type -> GrantTypes.authorization_code, code -> "whatever", redirect_uri -> RedirectUri)(client)
+      val client = Some(Oauth2Client("the_client", Oauth.encodePassword("wrongpass"), Seq("global"), Seq(GrantTypes.authorization_code, GrantTypes.refresh_token), RedirectUri, Seq(), 3600, 3600, None, false))
+      val resp = postf("/oauth/token", grant_type -> GrantTypes.refresh_token, refresh_token -> "whatever")(client)
       resp.status must equalTo(401)
       (resp.json \ "error") must equalTo(JsString(invalid_client))
       (resp.json \ "error_description") must equalTo(JsString("bad credentials"))
     }
 
-    //TODO This fails now because we must fake a logged in user with SecureSocial for the approval to pass
     "respond with 200 and the access token if request is correct" in new WithServer(port = 3333) {
       import oauth2.spec.AccessTokenResponseParams._
-      Oauth.storeClient(Oauth2Client("the_client", "pass", Seq("global"), Seq(GrantTypes.authorization_code, refresh_token), RedirectUri, Seq(), 3600, 3600, None, true))
-      val authzResp = await(WS.url(s"$TestUri/oauth/authorize?client_id=the_client&response_type=code&state=555&scope=global&redirect_uri=$RedirectUri").get)
-      val P = """.*?code=(.*)&state=555""".r
-      val P(authzCode) = authzResp.header("Location").get
-      val accessResp = postf1("/oauth/token", code -> URLDecoder.decode(authzCode, "utf8"), grant_type -> GrantTypes.authorization_code, redirect_uri -> RedirectUri)
+      val oauthClient = Oauth.storeClient(Oauth2Client("the_client", "pass", Seq("global"), Seq(GrantTypes.authorization_code, refresh_token), RedirectUri, Seq(), 3600, 3600, None, true))
+      val user = UserId("dorel@eloquentix.com", Some("google"))
+      val accToken = Oauth.generateAccessToken(oauthClient, Seq("internal"), Some(user))
+      val refToken = Oauth.generateRefreshToken(oauthClient, Seq("internal"), Some(user))
+      Oauth.storeTokens(AccessAndRefreshTokens(accToken, Some(refToken)), oauthClient)
+      val accessResp = postf1("/oauth/token", refresh_token -> refToken.value, grant_type -> GrantTypes.refresh_token)
       accessResp.status must equalTo(200)
       (accessResp.json \ access_token).as[String] must beMatching(".{53}")
-      (accessResp.json \ refresh_token).as[String] must beMatching(".{53}")
       (accessResp.json \ token_type).as[String] must equalTo("bearer")
-      (accessResp.json \ scope).as[String] must equalTo("global")
+      (accessResp.json \ scope).as[String] must equalTo("internal")
       (accessResp.json \ expires_in).as[Int] must beGreaterThan(0)
     }
   }
