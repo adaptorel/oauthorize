@@ -21,6 +21,8 @@ object ImplicitGrant extends ImplicitGrantPlay with OauthMix
 object ClientCredentialsGrant extends ClientCredentialsGrantPlay with OauthMix
 object AccessTokenEndpoint extends AccessTokenEndpointPlay with OauthMix
 object RefreshTokenEndpoint extends RefreshTokenEndpointPlay with OauthMix
+object ResourceOwnerCredentialsGrant extends ResourceOwnerCredentialsGrantPlay with OauthMix
+  with UserStore { override def getUser(id: UserId) = throw new UnsupportedOperationException }
 object UserApprovalEndpoint extends UserApprovalPlay with OauthMix
 
 class Oauth2Filters extends WithFilters(
@@ -28,6 +30,7 @@ class Oauth2Filters extends WithFilters(
   AuthorizationCodeGrant,
   ImplicitGrant,
   ClientCredentialsGrant,
+  ResourceOwnerCredentialsGrant,
   AccessTokenEndpoint,
   RefreshTokenEndpoint,
   UserApprovalEndpoint) with Oauth2GlobalErorrHandler

@@ -42,6 +42,10 @@ trait Oauth2Store {
   def getRefreshToken(value: String): Option[RefreshToken]
 }
 
+trait UserStore {
+  def getUser(id: UserId): Option[Oauth2User]
+}
+
 private object InMemoryStoreDelegate extends Oauth2Store {
   private val oauthClientStore = scala.collection.mutable.Map[String, Oauth2Client]()
   private val authzCodeStore = scala.collection.mutable.Map[String, AuthzRequest]()

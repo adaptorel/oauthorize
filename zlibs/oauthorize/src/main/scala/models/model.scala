@@ -10,6 +10,7 @@ case class AuthzRequest(clientId: String, responseType: ResponseType, redirectUr
 case class AccessTokenRequest(grantType: GrantType, authzCode: String, redirectUri: String, clientId: Option[String]) extends AccessTokenRequestValidation
 case class RefreshTokenRequest(grantType: GrantType, refreshToken: String) extends RefreshTokenRequestValidation
 case class ClientCredentialsRequest(client: Oauth2Client, scope: Option[String]) extends ClientCredentialsRequestValidation
+case class ResourceOwnerCredentialsRequest(grantType: GrantType, username: String, password: String, authScope: Seq[String]) extends ResourceOwnerCredentialsRequestValidation
 
 object ExpirationHelper {
   def isExpired(token: { def validity: Long; def created: Long }): Boolean = { token.created + token.validity * 1000 < System.currentTimeMillis }
@@ -42,7 +43,7 @@ case class Oauth2Client(clientId: String, clientSecret: String, scope: Seq[Strin
   additionalInfo: Option[String], autoapprove: Boolean = false)
 
 case class UserId(value: String, provider: Option[String])
-case class Oauth2User(id: UserId)
+case class Oauth2User(id: UserId, pwd: Option[String] = None)
 
 case class ClientAuthentication(clientId: String, clientSecret: String)
 
@@ -78,6 +79,13 @@ object ValidationUtils {
       case _ => Some(error)
     }
   }
+  
+  def errScope(authScope: Seq[String])(implicit client: Oauth2Client) = {
+    import oauth2.spec.AuthzErrors._
+    errForEmpty(authScope, err(invalid_request, s"mandatory: $scope")) orElse {
+      if (authScope.foldLeft(false)((acc, current) => acc || !client.scope.contains(current))) Some(err(invalid_request, s"invalid scope value")) else None
+    }
+  }
 }
 
 import ValidationUtils._
@@ -99,9 +107,7 @@ trait AuthzRequestValidation {
   }
 
   private def errScope(implicit client: Oauth2Client) = {
-    errForEmpty(authScope, err(invalid_request, s"mandatory: $scope")) orElse {
-      if (authScope.foldLeft(false)((acc, current) => acc || !client.scope.contains(current))) Some(err(invalid_request, s"invalid scope value")) else None
-    }
+    ValidationUtils.errScope(authScope)
   }
 
   private def errRedirectUri(implicit client: Oauth2Client) = {
@@ -170,6 +176,37 @@ trait RefreshTokenRequestValidation {
 
   private def errRefreshToken = {
     errForEmpty(refreshToken, err(invalid_request, s"mandatory: $refresh_token"))
+  }
+}
+
+trait ResourceOwnerCredentialsRequestValidation {
+  this: ResourceOwnerCredentialsRequest =>
+
+  import oauth2.spec.AccessTokenErrors._
+
+  def getError(implicit client: Oauth2Client): Option[Err] = {
+    errGrantType orElse
+      errUsername orElse 
+      errPassword orElse
+      errScope
+  }
+
+  private def errGrantType = {
+    errForEmpty(grantType, err(invalid_request, s"mandatory: $grant_type")) orElse {
+      if (grantType != refresh_token) Some(err(invalid_grant, s"mandatory: $grant_type in ['$refresh_token']")) else None
+    }
+  }
+
+  private def errUsername = {
+    errForEmpty(username, err(invalid_request, s"mandatory: $username"))
+  }
+  
+  private def errPassword = {
+    errForEmpty(password, err(invalid_request, s"mandatory: $password"))
+  }
+  
+    private def errScope(implicit client: Oauth2Client) = {
+    ValidationUtils.errScope(authScope)
   }
 }
 

@@ -25,7 +25,9 @@ object Req {
   val scope = "scope"
   val grant_type = "grant_type"
   val code = "code"
-  val refresh_token = "refresh_token"  
+  val refresh_token = "refresh_token"
+  val username = "username"
+  val password = "password"  
 }
 
 /**

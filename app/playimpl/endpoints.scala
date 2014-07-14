@@ -50,6 +50,14 @@ trait AuthorizationCodePlay extends BodyReaderFilter with AuthorizationCode with
   }
 }
 
+trait ResourceOwnerCredentialsGrantPlay extends BodyReaderFilter with ResourceOwnerCredentialsGrant with RenderingUtils {
+  this: Oauth2Defaults with PasswordEncoder with Oauth2Store with UserStore with AuthzCodeGenerator =>
+
+  override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
+    Option(processOwnerCredentialsRequest(oauthRequest, BasicAuthentication(req)).map(_.fold(err => err, correct => correct)))
+  }
+}
+
 trait ImplicitGrantPlay extends BodyReaderFilter with ImplicitGrant with RenderingUtils with securesocial.core.SecureSocial {
   this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator =>
 
