@@ -49,86 +49,10 @@ trait RenderingUtils extends Controller {
 
   implicit def transformReponse(response: OauthResponse) = response match {
     case r: OauthRedirect => Redirect(r.uri, r.params.map(tuple => (tuple._1 -> Seq(tuple._2))), 302)
-    case a: InitiateApproval => Redirect(userApprovalEndpoint, Map("code" -> Seq(a.authzCode), UserApproval.AuthzRequestKey -> jsonParam(a.authzRequest), UserApproval.AutoApproveKey -> Seq(a.client.autoapprove.toString)), 302)
+    case a: InitiateAuthzApproval => Redirect(userApprovalEndpoint, Map(UserApproval.AuthzRequestKey -> authzParam(a.authzRequest), UserApproval.AutoApproveKey -> Seq(a.client.autoapprove.toString)), 302)
   }
   
-  private def jsonParam(authzReq: AuthzRequest) = Seq(Json.stringify(Json.toJson(authzReq)))
+  private def authzParam(authzReq: AuthzRequest) = Seq(Json.stringify(Json.toJson(authzReq)))
+  private def implicitParam(implicitResponse: ImplicitResponse) = Seq(Json.stringify(Json.toJson(implicitResponse)))
 
-  implicit def PlayRequestToOauth2Request(request: RequestHeader) = {
-    BodyParsers.parse.urlFormEncoded(request).run.map { parsed =>
-      parsed match {
-        case Left(err) => request.queryString
-        case Right(good) => good ++ request.queryString
-      }
-    }.map { par =>
-      new OauthRequest() {
-        override def params = par.map(v => (v._1 -> v._2.mkString))
-        override def method = request.method
-        override def path = request.path
-        override def param(key: String) = params.get(key)
-      }
-    } recover {
-      case e: Exception => e.printStackTrace; throw e
-    }
-  }
-}
-
-trait BodyReaderFilter extends EssentialFilter {
-
-  this: Dispatcher with Logging =>
-
-  import json._
-  import play.api.libs.iteratee.{ Enumerator, Done, Iteratee, Traversable }
-  import play.api.libs.concurrent.Execution.Implicits.defaultContext
-  import play.api.mvc.BodyParsers.parse._
-  import play.api.mvc.Results.InternalServerError
-  import oauthorize.utils.err
-
-  override def apply(nextFilter: EssentialAction) = new EssentialAction {
-    def apply(requestHeader: RequestHeader) = {
-      checkFormBody(requestHeader, nextFilter)
-    }
-  }
-
-  def bodyProcessor(a: OauthRequest, req: RequestHeader): Option[Future[SimpleResult]] = {
-    Some(Future.successful(InternalServerError(Json.toJson(err(AuthzErrors.server_error, "Not implemented")))))
-  }
-
-  private def checkFormBody = checkBody1[Map[String, Seq[String]]](tolerantFormUrlEncoded, identity, bodyProcessor) _
-  private def checkBody1[T](parser: BodyParser[T], extractor: (T => Map[String, Seq[String]]), processor: (OauthRequest, RequestHeader) => Option[Future[SimpleResult]])(request: RequestHeader, nextAction: EssentialAction) = {
-    val firstPartOfBody: Iteratee[Array[Byte], Array[Byte]] =
-      Traversable.take[Array[Byte]](50000) &>> Iteratee.consume[Array[Byte]]()
-
-    firstPartOfBody.flatMap { bytes: Array[Byte] =>
-      val parsedBody = Enumerator(bytes) |>>> parser(request)
-      Iteratee.flatten(parsedBody.flatMap { parseResult =>
-        val bodyAsMap = parseResult.fold(
-          msg => { warn(msg.toString); Map[String, Seq[String]]() },
-          body => ({
-            for {
-              values <- extractor(body)
-            } yield values
-          }))
-        process(bodyAsMap ++ request.queryString, request, nextAction, bytes)
-      })
-    }
-  }
-
-  private def process(bodyAndQueryStringAsMap: Map[String, Seq[String]], request: RequestHeader, nextAction: EssentialAction, bytes: Array[Byte]): Future[Iteratee[Array[Byte], SimpleResult]] = {
-    val r = new OauthRequest() {
-      override val path = request.path
-      override val method = request.method
-      override val params = bodyAndQueryStringAsMap.map(x => (x._1 -> x._2.mkString))
-      override def param(key: String) = params.get(key)
-    }
-    if (matches(r)) {
-      debug("found matching request, will process with the body processor " + r + ": " + this)
-      bodyProcessor(r, request).fold(next(nextAction, bytes, request))(f => f.map(Done(_)))
-    } else {
-      debug("didn't find matching request, will just forward " + r + ": " + this)
-      next(nextAction, bytes, request)
-    }
-  }
-
-  private def next(nextAction: EssentialAction, bytes: Array[Byte], request: RequestHeader) = Future(Iteratee.flatten(Enumerator(bytes) |>> nextAction(request)))
 }

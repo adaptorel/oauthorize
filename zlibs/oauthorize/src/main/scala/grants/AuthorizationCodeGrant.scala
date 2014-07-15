@@ -29,25 +29,12 @@ trait AuthorizationCode extends Dispatcher {
             val authzRequest = AuthzRequest(clientId, responseType, redirectUri, authzScope.split(ScopeSeparator).toSeq, client.autoapprove, req.param(state))
             authzRequest.getError(client) match {
               case Some(err) => Left(err)
-              case None => processAuthzRequest(authzRequest, client) match {
-                case Left(err) => Left(err)
-                case Right(authzCode) => Right(InitiateApproval(authzCode, authzRequest, client))
-              }
+              case None => Right(InitiateAuthzApproval(authzRequest, client))
             }
           }
         }
       }
       case _ => Left(err(invalid_request, s"mandatory: $client_id, $response_type, $redirect_uri, $scope"))
-    }
-  }
-  
-  private def processAuthzRequest(authzRequest: AuthzRequest, oauthClient: Oauth2Client): Either[Err, String] = {
-    if (ResponseType.code != authzRequest.responseType ||
-      !oauthClient.authorizedGrantTypes.contains(GrantTypes.authorization_code)) {
-      Left(err(unsupported_response_type, "unsupported grant type"))
-    } else {
-      val authzCode = generateCode(authzRequest)
-      Right(authzCode)
     }
   }
 }

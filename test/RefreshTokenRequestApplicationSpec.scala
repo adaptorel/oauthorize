@@ -23,11 +23,7 @@ import play.api.libs.ws.Response
 import play.api.libs.ws.Response
 
 @RunWith(classOf[JUnitRunner])
-class RefreshTokenRequestApplicationSpec extends PlaySpecification {
-
-  val RedirectUri = "redirecturi"
-  val port = 3333
-  val TestUri = s"http://localhost:$port"
+class RefreshTokenRequestApplicationSpec extends PlaySpecification with TestHelpers {
 
   "Application" should {
 
@@ -67,25 +63,5 @@ class RefreshTokenRequestApplicationSpec extends PlaySpecification {
       (accessResp.json \ scope).as[String] must equalTo("internal")
       (accessResp.json \ expires_in).as[Int] must beGreaterThan(0)
     }
-  }
-
-  private def postWoRegisteredClient(url: String, content: (String, String)*) = {
-    postfWoRegisteredClient(url, content :_*)
-  }
-
-  private def postfWoRegisteredClient(url: String, content: (String, String) *) = {
-    val urlEncoded = content.map(pair => URLEncoder.encode(pair._1, "utf-8") + "=" + URLEncoder.encode(pair._2, "utf-8")).mkString("&")
-    await(WS.url(s"$TestUri$url").withAuth("no_client", "pass", Realm.AuthScheme.BASIC).withHeaders("Content-Type" -> "application/x-www-form-urlencoded").post(urlEncoded))
-  }
-
-  private def post(url: String): Response = postf(url)(None)
-  
-  private def postf1(url: String, content: (String, String)*): Response = postf(url, content :_*)(None)
-  
-  private def postf(url: String, content: (String, String)*)(client: Option[Oauth2Client] = None): Response = {
-    val urlEncoded = content.map(pair => URLEncoder.encode(pair._1, "utf-8") + "=" + URLEncoder.encode(pair._2, "utf-8")).mkString("&")
-    val pass = Oauth.encodePassword("pass")
-    Oauth.storeClient(client.getOrElse(Oauth2Client("the_client", pass, Seq("global"), Seq(GrantTypes.authorization_code, GrantTypes.refresh_token), RedirectUri, Seq(), 3600, 3600, None, true)))
-    await(WS.url(s"$TestUri$url").withAuth("the_client", "pass", Realm.AuthScheme.BASIC).withHeaders("Content-Type" -> "application/x-www-form-urlencoded").post(urlEncoded))
   }
 }

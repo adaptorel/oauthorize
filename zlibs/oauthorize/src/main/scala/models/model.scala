@@ -4,7 +4,7 @@ import oauthorize.utils._
 import oauth2.spec.Req._
 import oauth2.spec._
 import oauth2.spec.StatusCodes._
-import oauth2.spec.model.ErrorResponse
+import oauth2.spec.model.{ ImplicitResponse, ErrorResponse }
 
 case class AuthzRequest(clientId: String, responseType: ResponseType, redirectUri: String, authScope: Seq[String], approved: Boolean, state: Option[State] = None, user: Option[Oauth2User] = None) extends AuthzRequestValidation
 case class AccessTokenRequest(grantType: GrantType, authzCode: String, redirectUri: String, clientId: Option[String]) extends AccessTokenRequestValidation
@@ -27,6 +27,7 @@ case class AccessAndRefreshTokens(accessToken: AccessToken, refreshToken: Option
 trait OauthRequest {
   def path: String
   def param(key: String): Option[String]
+  def header(key: String): Option[String]
   def method: String
   def params: Map[String, String]
   override def toString = s"$method '$path' $params"
@@ -34,7 +35,7 @@ trait OauthRequest {
 
 trait OauthResponse
 case class OauthRedirect(uri: String, params: Map[String, String]) extends OauthResponse
-case class InitiateApproval(authzCode: String, authzRequest: AuthzRequest, client: Oauth2Client) extends OauthResponse
+case class InitiateAuthzApproval(authzRequest: AuthzRequest, client: Oauth2Client) extends OauthResponse
 case class Err(error: String, error_description: Option[String] = None, error_uri: Option[String] = None,
   @transient redirect_uri: Option[String] = None, @transient status_code: Int = StatusCodes.BadRequest) extends ErrorResponse(error, error_description, error_uri) with OauthResponse
 
@@ -79,11 +80,24 @@ object ValidationUtils {
       case _ => Some(error)
     }
   }
-  
-  def errScope(authScope: Seq[String])(implicit client: Oauth2Client) = {
-    import oauth2.spec.AuthzErrors._
+
+  def errForEmptyString(value: String, error: Err) = {
+    Option(value).filter(!_.trim.isEmpty) match {
+      case Some(s: Any) => None
+      case _ => Some(error)
+    }
+  }
+
+  def errForScope(authScope: Seq[String])(implicit client: Oauth2Client) = {
+    import oauth2.spec.AuthzErrors.invalid_request
     errForEmpty(authScope, err(invalid_request, s"mandatory: $scope")) orElse {
-      if (authScope.foldLeft(false)((acc, current) => acc || !client.scope.contains(current))) Some(err(invalid_request, s"invalid scope value")) else None
+      if (authScope.foldLeft(false)((acc, current) => acc || !client.scope.contains(current))) Some(err(invalid_request, s"unsupported scope")) else None
+    }
+  }
+
+  def errForGrantType(grantType: String, client: Oauth2Client) = {
+    errForEmptyString(grantType, err(AccessTokenErrors.invalid_request, s"mandatory: $grant_type")) orElse {
+      if (!client.authorizedGrantTypes.contains(grantType)) Some(err(AccessTokenErrors.unsupported_grant_type, s"unsupported grant type")) else None
     }
   }
 }
@@ -99,24 +113,28 @@ trait AuthzRequestValidation {
     errClientId orElse
       errResponseType orElse
       errRedirectUri orElse
-      errScope
+      errForScope(authScope) orElse errInvalidScope
   }
 
   private def errClientId = {
-    errForEmpty(clientId, err(invalid_request, s"mandatory: $client_id"))
+    errForEmptyString(clientId, err(invalid_request, s"mandatory: $client_id"))
   }
 
-  private def errScope(implicit client: Oauth2Client) = {
-    ValidationUtils.errScope(authScope)
+  private def errInvalidScope(implicit client: Oauth2Client) = {
+    if ((ResponseType.token == responseType && !client.authorizedGrantTypes.contains(GrantTypes.implic1t)) &&
+      (ResponseType.code == responseType && !client.authorizedGrantTypes.contains(GrantTypes.authorization_code)))
+      Some(err(unsupported_response_type, "unsupported grant type"))
+    else
+      None
   }
 
   private def errRedirectUri(implicit client: Oauth2Client) = {
-    errForEmpty(redirectUri, err(invalid_request, s"mandatory: $redirect_uri")) orElse
+    errForEmptyString(redirectUri, err(invalid_request, s"mandatory: $redirect_uri")) orElse
       (if (redirectUri != client.redirectUri) Some(err(invalid_request, s"missmatched: $redirect_uri")) else None)
   }
 
   private def errResponseType = {
-    errForEmpty(responseType, err(invalid_request, s"mandatory: $response_type")) orElse {
+    errForEmptyString(responseType, err(invalid_request, s"mandatory: $response_type")) orElse {
       responseType match {
         case ResponseType.code | ResponseType.token => None
         case _ => Some(err(invalid_request, s"mandatory: $response_type in ['${ResponseType.code}','${ResponseType.token}']"))
@@ -130,9 +148,9 @@ trait AccessTokenRequestValidation {
 
   import oauth2.spec.AccessTokenErrors._
 
-  def getError(authzRequest: AuthzRequest, authenticatedClientId: String): Option[Err] = {
-    errClientId(authzRequest, authenticatedClientId) orElse
-      errGrantType orElse
+  def getError(authzRequest: AuthzRequest, client: Oauth2Client): Option[Err] = {
+    errClientId(authzRequest, client.clientId) orElse
+      errForGrantType(grantType, client) orElse
       errCode(authzRequest) orElse
       errForUnmatchingRedirectUri(authzRequest)
   }
@@ -141,18 +159,12 @@ trait AccessTokenRequestValidation {
     if (authzRequest.clientId != authenticatedClientId) Some(err(invalid_grant, s"mismatched $client_id")) else None
   }
 
-  private def errGrantType = {
-    errForEmpty(grantType, err(invalid_request, s"mandatory: $grant_type")) orElse {
-      if (grantType != GrantTypes.authorization_code) Some(err(invalid_grant, s"mandatory: $grant_type in ['${GrantTypes.authorization_code}']")) else None
-    }
-  }
-
   private def errCode(authzRequest: AuthzRequest) = {
-    errForEmpty(authzCode, err(invalid_request, s"mandatory: $code"))
+    errForEmptyString(authzCode, err(invalid_request, s"mandatory: $code"))
   }
 
   private def errForUnmatchingRedirectUri(authzRequest: AuthzRequest) = {
-    errForEmpty(redirectUri, err(invalid_request, s"mandatory: $redirect_uri")) orElse {
+    errForEmptyString(redirectUri, err(invalid_request, s"mandatory: $redirect_uri")) orElse {
       if (authzRequest.redirectUri != redirectUri) Some(err(invalid_request, s"mismatched: $redirect_uri")) else None
     }
   }
@@ -163,19 +175,13 @@ trait RefreshTokenRequestValidation {
 
   import oauth2.spec.AccessTokenErrors._
 
-  def getError: Option[Err] = {
-    errGrantType orElse
+  def getError(client: Oauth2Client): Option[Err] = {
+    errForGrantType(grantType, client) orElse
       errRefreshToken
   }
 
-  private def errGrantType = {
-    errForEmpty(grantType, err(invalid_request, s"mandatory: $grant_type")) orElse {
-      if (grantType != refresh_token) Some(err(invalid_grant, s"mandatory: $grant_type in ['$refresh_token']")) else None
-    }
-  }
-
   private def errRefreshToken = {
-    errForEmpty(refreshToken, err(invalid_request, s"mandatory: $refresh_token"))
+    errForEmptyString(refreshToken, err(invalid_request, s"mandatory: $refresh_token"))
   }
 }
 
@@ -185,28 +191,24 @@ trait ResourceOwnerCredentialsRequestValidation {
   import oauth2.spec.AccessTokenErrors._
 
   def getError(implicit client: Oauth2Client): Option[Err] = {
-    errGrantType orElse
-      errUsername orElse 
+    errForGrantType(grantType, client) orElse
+      errUsername orElse
       errPassword orElse
-      errScope
+      errForScope(authScope)
   }
 
-  private def errGrantType = {
-    errForEmpty(grantType, err(invalid_request, s"mandatory: $grant_type")) orElse {
-      if (grantType != refresh_token) Some(err(invalid_grant, s"mandatory: $grant_type in ['$refresh_token']")) else None
+  private def errGrantType(implicit client: Oauth2Client) = {
+    errForEmptyString(grantType, err(invalid_request, s"mandatory: $grant_type")) orElse {
+      if (!client.authorizedGrantTypes.contains(grantType)) Some(err(unsupported_grant_type, s"unsupported grant type")) else None
     }
   }
 
   private def errUsername = {
-    errForEmpty(username, err(invalid_request, s"mandatory: $username"))
+    errForEmptyString(username, err(invalid_request, s"mandatory: $username"))
   }
-  
+
   private def errPassword = {
-    errForEmpty(password, err(invalid_request, s"mandatory: $password"))
-  }
-  
-    private def errScope(implicit client: Oauth2Client) = {
-    ValidationUtils.errScope(authScope)
+    errForEmptyString(password, err(invalid_request, s"mandatory: $password"))
   }
 }
 

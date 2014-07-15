@@ -46,7 +46,7 @@ trait AccessTokenEndpoint extends Dispatcher {
     getAuthzRequest(accessTokenRequest.authzCode) match {
       case None => Left(err(invalid_request, "invalid authorization code"))
       case Some(authzRequest) => {
-        accessTokenRequest.getError(authzRequest, oauthClient.clientId) match {
+        accessTokenRequest.getError(authzRequest, oauthClient) match {
           case Some(error) => Left(error)
           case None => {
             /*

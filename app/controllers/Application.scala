@@ -21,8 +21,7 @@ object ImplicitGrant extends ImplicitGrantPlay with OauthMix
 object ClientCredentialsGrant extends ClientCredentialsGrantPlay with OauthMix
 object AccessTokenEndpoint extends AccessTokenEndpointPlay with OauthMix
 object RefreshTokenEndpoint extends RefreshTokenEndpointPlay with OauthMix
-object ResourceOwnerCredentialsGrant extends ResourceOwnerCredentialsGrantPlay with OauthMix
-  with UserStore { override def getUser(id: UserId) = throw new UnsupportedOperationException }
+object ResourceOwnerCredentialsGrant extends ResourceOwnerCredentialsGrantPlay with OauthMix with SecureSocialUserStore
 object UserApprovalEndpoint extends UserApprovalPlay with OauthMix
 
 class Oauth2Filters extends WithFilters(
@@ -63,3 +62,44 @@ trait PlayLogging extends Logging {
 }
 
 trait Oauth2DefaultsPlay extends Oauth2Defaults with PlayLogging with PlayExecutionContextProvider
+
+trait SecureSocialUserStore extends UserStore {
+  import securesocial.core._
+  override def getUser(id: UserId) = {
+    UserService.find(IdentityId(id.value, id.provider.getOrElse("userpass"))).map(u => Oauth2User(UserId(u.identityId.userId, Option(u.identityId.providerId)), u.passwordInfo.map(_.password)))
+  }
+}
+
+import securesocial.core._
+import securesocial.core.providers.utils._
+
+/**
+ * The default password hasher based on BCrypt.
+ */
+class BCryptPasswordHasher(app: play.api.Application) extends PasswordHasher {
+
+  override def id = PasswordHasher.BCryptHasher
+
+  /**
+   * Hashes a password. This implementation does not return the salt because it is not needed
+   * to verify passwords later.  Other implementations might need to return it so it gets saved in the
+   * backing store.
+   *
+   * @param plainPassword the password to hash
+   * @return a PasswordInfo containing the hashed password.
+   */
+  def hash(plainPassword: String): PasswordInfo = {
+    PasswordInfo(id, Oauth.encodePassword(plainPassword))
+  }
+
+  /**
+   * Checks if a password matches the hashed version
+   *
+   * @param passwordInfo the password retrieved from the backing store (by means of UserService)
+   * @param suppliedPassword the password supplied by the user trying to log in
+   * @return true if the password matches, false otherwise.
+   */
+  def matches(passwordInfo: PasswordInfo, suppliedPassword: String): Boolean = {
+    Oauth.passwordMatches(suppliedPassword, passwordInfo.password)
+  }
+}

@@ -46,7 +46,7 @@ trait RefreshTokenEndpoint extends Dispatcher {
     getRefreshToken(refreshTokenRequest.refreshToken) match {
       case None => Left(err(invalid_grant, "invalid refresh token"))
       case Some(refreshToken) => {
-        refreshTokenRequest.getError match {
+        refreshTokenRequest.getError(oauthClient) match {
           case Some(error) => Left(error)
           case None if (refreshToken.isExpired) => Left(err(invalid_grant, "refresh token expired"))
           case None => {

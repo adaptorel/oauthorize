@@ -73,6 +73,8 @@ object AccessTokenErrors {
   val invalid_scope = "invalid_scope"
   val server_error = "server_error"
   val temporarily_unavailable = "temporarily_unavailable"
+  val unsupported_grant_type = "unsupported_grant_type"
+    
 }
 
 object AccessTokenResponseParams {

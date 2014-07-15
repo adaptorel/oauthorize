@@ -9,7 +9,7 @@ import json._
 import scala.concurrent.Future
 import play.api.libs.json.Json
 
-trait Oauth2RequestValidatorPlay extends BodyReaderFilter with Oauth2RequestValidator with RenderingUtils {
+trait Oauth2RequestValidatorPlay extends Oauth2BodyReaderFilter with Oauth2RequestValidator with RenderingUtils {
   this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator =>
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
@@ -18,7 +18,7 @@ trait Oauth2RequestValidatorPlay extends BodyReaderFilter with Oauth2RequestVali
   }
 }
 
-trait AccessTokenEndpointPlay extends BodyReaderFilter with AccessTokenEndpoint with RenderingUtils {
+trait AccessTokenEndpointPlay extends Oauth2BodyReaderFilter with AccessTokenEndpoint with RenderingUtils {
   this: Oauth2Defaults with PasswordEncoder with Oauth2Store with AuthzCodeGenerator =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
@@ -26,7 +26,7 @@ trait AccessTokenEndpointPlay extends BodyReaderFilter with AccessTokenEndpoint 
   }
 }
 
-trait RefreshTokenEndpointPlay extends BodyReaderFilter with RefreshTokenEndpoint with RenderingUtils {
+trait RefreshTokenEndpointPlay extends Oauth2BodyReaderFilter with RefreshTokenEndpoint with RenderingUtils {
   this: Oauth2Defaults with PasswordEncoder with Oauth2Store with AuthzCodeGenerator =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
@@ -34,7 +34,7 @@ trait RefreshTokenEndpointPlay extends BodyReaderFilter with RefreshTokenEndpoin
   }
 }
 
-trait ClientCredentialsGrantPlay extends BodyReaderFilter with ClientCredentialsGrant with RenderingUtils {
+trait ClientCredentialsGrantPlay extends Oauth2BodyReaderFilter with ClientCredentialsGrant with RenderingUtils {
   this: Oauth2Defaults with PasswordEncoder with Oauth2Store with AuthzCodeGenerator =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
@@ -42,7 +42,7 @@ trait ClientCredentialsGrantPlay extends BodyReaderFilter with ClientCredentials
   }
 }
 
-trait AuthorizationCodePlay extends BodyReaderFilter with AuthorizationCode with RenderingUtils {
+trait AuthorizationCodePlay extends Oauth2BodyReaderFilter with AuthorizationCode with RenderingUtils {
   this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator =>
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
@@ -50,7 +50,7 @@ trait AuthorizationCodePlay extends BodyReaderFilter with AuthorizationCode with
   }
 }
 
-trait ResourceOwnerCredentialsGrantPlay extends BodyReaderFilter with ResourceOwnerCredentialsGrant with RenderingUtils {
+trait ResourceOwnerCredentialsGrantPlay extends Oauth2BodyReaderFilter with ResourceOwnerCredentialsGrant with RenderingUtils {
   this: Oauth2Defaults with PasswordEncoder with Oauth2Store with UserStore with AuthzCodeGenerator =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
@@ -58,7 +58,7 @@ trait ResourceOwnerCredentialsGrantPlay extends BodyReaderFilter with ResourceOw
   }
 }
 
-trait ImplicitGrantPlay extends BodyReaderFilter with ImplicitGrant with RenderingUtils with securesocial.core.SecureSocial {
+trait ImplicitGrantPlay extends Oauth2BodyReaderFilter with ImplicitGrant with RenderingUtils with securesocial.core.SecureSocial {
   this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator =>
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
@@ -72,8 +72,8 @@ trait ImplicitGrantPlay extends BodyReaderFilter with ImplicitGrant with Renderi
 
 }
 
-trait UserApprovalPlay extends BodyReaderFilter with UserApproval with RenderingUtils with securesocial.core.SecureSocial {
-  this: Oauth2Defaults with Oauth2Store =>
+trait UserApprovalPlay extends Oauth2BodyReaderFilter with UserApproval with RenderingUtils with securesocial.core.SecureSocial {
+  this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator =>
 
   import oauth2.spec.Req._
   import oauthorize.utils._
@@ -99,12 +99,11 @@ trait UserApprovalPlay extends BodyReaderFilter with UserApproval with Rendering
 
   private def displayUserApprovalPage(a: OauthRequest) = {
     (for {
-      authzCode <- a.param(code)
       authzRequestJsonString <- a.param(UserApproval.AuthzRequestKey)
       authzReq <- unmarshal(authzRequestJsonString)
       client <- getClient(authzReq.clientId)
     } yield {
-      Ok(views.html.user_approval(authzCode, authzReq, authzRequestJsonString, client))
+      Ok(views.html.user_approval(authzReq, authzRequestJsonString, client))
     }) getOrElse ({
       logError("Fatal error when initiating user approval after user authentication! The authorization code, authorization request or the client weren't found. Shouldn't have got here EVER, we're controlling the whole flow!")
       renderErrorAsResult(err(server_error, 500))

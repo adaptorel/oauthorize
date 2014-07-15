@@ -11,16 +11,16 @@ trait Oauth2RequestValidator extends Dispatcher {
   this: Oauth2Defaults =>
 
   override def matches(request: OauthRequest) = {
-    request.method == authorizeEndpoint ||
-      request.method == accessTokenEndpoint ||
-      request.method == userApprovalEndpoint
+    request.path == authorizeEndpoint ||
+      request.path == accessTokenEndpoint ||
+      request.path == userApprovalEndpoint
   }
 
   def getErrors(implicit r: OauthRequest): Option[Future[Err]] = {
-    debug("global validation for: " + r)
+    debug("Global validation for: " + r)
     val res = getAuthorizeRequestError orElse
       getAccessTokenRequestError
-    res.map(err => warn(s"rejecting $r because of $err"))
+    res.foreach(err => warn(s"Rejected $r because of $err"))
     res.map(Future(_))
   }
 
@@ -33,27 +33,30 @@ trait Oauth2RequestValidator extends Dispatcher {
   }
 
   private def getAccessTokenRequestError(implicit r: OauthRequest) = {
-    invalidAccessTokenMethod orElse
-      invalidAccessTokenGrantType orElse
-      invalidAccessTokenCodeParamMissing
+    invalidAccessTokenEndpointMethod orElse
+      invalidAccessTokenEndpointContentType orElse
+      invalidAccessTokenGrantType
   }
 
-  private def invalidAccessTokenMethod(implicit r: OauthRequest) = {
+  private def invalidAccessTokenEndpointMethod(implicit r: OauthRequest) = {
     if (r.path == accessTokenEndpoint && r.method != "POST") {
       Some(err(AuthzErrors.invalid_request, s"mandatory: HTTPS POST"))
     } else None
   }
 
+  private def invalidAccessTokenEndpointContentType(implicit r: OauthRequest) = {
+    if (r.path == accessTokenEndpoint && r.header("Content-Type").map(_ != "application/x-www-form-urlencoded").getOrElse(true)) {
+      Some(err(AuthzErrors.invalid_request, s"mandatory: Content-Type -> application/x-www-form-urlencoded"))
+    } else None
+  }
+
   private def invalidAccessTokenGrantType(implicit r: OauthRequest) = {
-    if (r.path == accessTokenEndpoint && r.param(Req.grant_type).map(gt => gt != GrantTypes.authorization_code && gt != GrantTypes.refresh_token && gt != GrantTypes.client_credentials && gt != GrantTypes.password).getOrElse(true)) {
+    if (r.path == accessTokenEndpoint && r.param(Req.grant_type).map(gt =>
+      gt != GrantTypes.authorization_code &&
+        gt != GrantTypes.refresh_token &&
+        gt != GrantTypes.client_credentials &&
+        gt != GrantTypes.password).getOrElse(true)) {
       Some(err(AuthzErrors.invalid_request, "invalid grant type"))
     } else None
   }
-
-  private def invalidAccessTokenCodeParamMissing(implicit r: OauthRequest) = {
-    if (r.path == accessTokenEndpoint && r.param(Req.grant_type).map(gt => gt == GrantTypes.authorization_code && !r.param(Req.code).isDefined).getOrElse(false)) {
-      Some(err(AuthzErrors.invalid_request, s"mandatory: ${Req.code} parameter"))
-    } else None
-  }
-
 }
