@@ -1,26 +1,23 @@
 import play.Project._
 
-name := "oauthorize-play-22x"
+name := "oauthorize-play-app"
 
-version in ThisBuild := "0.1.0"
+version in ThisBuild := "0.1.1"
 
 organization in ThisBuild := "com.oauthorize"
 
 libraryDependencies ++= Seq(
   "ws.securesocial" %% "securesocial" % "2.1.3"
-)     
-
-publishTo in ThisBuild := {
-  val localPublishRepo = "/Users/dorel/Work/_bitbucket_maven"
-  Some(Resolver.file("releases", new File(localPublishRepo)))
-}
+)
 
 publishMavenStyle in ThisBuild := true
 
 play.Project.playScalaSettings
 
-lazy val oauthorizePlay = project.in(file("."))
+lazy val main = project.in(file("."))
+    .aggregate(oauthorizePlay)
+    .dependsOn(oauthorizePlay)
+lazy val oauthorizePlay = project.in(file("zlibs/oauthorize-play"))
     .aggregate(oauthorize)
     .dependsOn(oauthorize)
-    
-lazy val oauthorize = project.in(file("zlibs/oauthorize"))    
+lazy val oauthorize = project.in(file("zlibs/oauthorize-core"))    

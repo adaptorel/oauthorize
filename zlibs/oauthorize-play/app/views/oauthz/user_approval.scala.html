@@ -1,7 +1,7 @@
 @(authzRequest: oauthorize.model.AuthzRequest, authzRequestJsonString: String, client: oauthorize.model.Oauth2Client)
 @import oauth2.spec.Req
 @import oauthorize.grants.UserApproval
-@main(title = "User approval") {
+@oauthz.main(title = "User approval") {
   <h1>Application '@client.clientId' requires access to '@authzRequest.authScope'</h1>
   <form action="/oauth/approve" method="POST">
     <input type="hidden" id="@UserApproval.AuthzRequestKey" name="@UserApproval.AuthzRequestKey" value="@authzRequestJsonString">

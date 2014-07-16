@@ -69,9 +69,9 @@ trait UserApproval extends Dispatcher {
   private def renderAuthzResponse(authzRequest: AuthzRequest, client: Oauth2Client, req: OauthRequest, u: Oauth2User) = {
     val authzCode = generateCode(authzRequest)
     storeAuthzRequest(authzCode, authzRequest.copy(user = Option(u)))
-    val redirectParams = Map(code -> authzCode)
-    req.param(state).map(s => redirectParams + (state -> s)).getOrElse(redirectParams)
-    OauthRedirect(s"${client.redirectUri}", redirectParams)
+    val tmp = Map(code -> authzCode)
+    val params = authzRequest.state.map(s => tmp + (state -> s)).getOrElse(tmp)
+    OauthRedirect(s"${client.redirectUri}", params)
   }
 
   private def renderAccessDenied(req: OauthRequest, client: Oauth2Client) = {
