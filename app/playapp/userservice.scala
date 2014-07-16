@@ -14,12 +14,13 @@
  * limitations under the License.
  *
  */
-package service
+package oauthorize.playapp
 
 import play.api.{Logger, Application}
 import securesocial.core._
 import securesocial.core.providers.Token
 import securesocial.core.IdentityId
+import scala.Option.option2Iterable
 
 
 /**

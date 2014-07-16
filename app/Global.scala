@@ -1,7 +1,7 @@
 import play.api.Application
 import play.api.mvc.WithFilters
 import oauthorize.model.Oauth2Client
-import app._
+import oauthorize.playapp._
 
 object Global extends Oauth2Filters {
   override def onStart(app: Application) = {

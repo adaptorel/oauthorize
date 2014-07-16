@@ -1,4 +1,4 @@
-package test
+package oauthorize.test
 
 import org.specs2.mutable._
 import org.specs2.runner._
@@ -17,7 +17,7 @@ import scala.concurrent.duration._
 import oauth2.spec.ResponseType
 import play.api.Play
 import oauthorize.service.Oauth2Store
-import app.Oauth
+import oauthorize.playapp.Oauth
 import oauth2.spec.GrantTypes
 
 @RunWith(classOf[JUnitRunner])

@@ -1,4 +1,4 @@
-package grants.playimpl
+package oauthorize.playapp.grants
 
 import oauth2.spec.AuthzErrors
 import oauthorize.model.{OauthRequest, Logging, Dispatcher}

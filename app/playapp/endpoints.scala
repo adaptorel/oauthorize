@@ -1,13 +1,14 @@
-package grants.playimpl
+package oauthorize.playapp.grants
 
 import play.api.mvc._
 import play.api.mvc.Results._
+import play.api.libs.json.Json
 import oauthorize.model._
 import oauthorize.service._
 import oauthorize.grants._
 import json._
+import oauthorize.utils.BasicAuthentication
 import scala.concurrent.Future
-import play.api.libs.json.Json
 
 trait Oauth2RequestValidatorPlay extends Oauth2BodyReaderFilter with Oauth2RequestValidator with RenderingUtils {
   this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator =>
@@ -22,7 +23,7 @@ trait AccessTokenEndpointPlay extends Oauth2BodyReaderFilter with AccessTokenEnd
   this: Oauth2Defaults with PasswordEncoder with Oauth2Store with AuthzCodeGenerator =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
-    Option(processAccessTokenRequest(oauthRequest, BasicAuthentication(req)).map(_.fold(err => err, correct => correct)))
+    Option(processAccessTokenRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
   }
 }
 
@@ -30,7 +31,7 @@ trait RefreshTokenEndpointPlay extends Oauth2BodyReaderFilter with RefreshTokenE
   this: Oauth2Defaults with PasswordEncoder with Oauth2Store with AuthzCodeGenerator =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
-    Option(processRefreshTokenRequest(oauthRequest, BasicAuthentication(req)).map(_.fold(err => err, correct => correct)))
+    Option(processRefreshTokenRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
   }
 }
 
@@ -38,7 +39,7 @@ trait ClientCredentialsGrantPlay extends Oauth2BodyReaderFilter with ClientCrede
   this: Oauth2Defaults with PasswordEncoder with Oauth2Store with AuthzCodeGenerator =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
-    Option(processClientCredentialsRequest(oauthRequest, BasicAuthentication(req)).map(_.fold(err => err, correct => correct)))
+    Option(processClientCredentialsRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
   }
 }
 
@@ -54,7 +55,7 @@ trait ResourceOwnerCredentialsGrantPlay extends Oauth2BodyReaderFilter with Reso
   this: Oauth2Defaults with PasswordEncoder with Oauth2Store with UserStore with AuthzCodeGenerator =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
-    Option(processOwnerCredentialsRequest(oauthRequest, BasicAuthentication(req)).map(_.fold(err => err, correct => correct)))
+    Option(processOwnerCredentialsRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
   }
 }
 
@@ -114,7 +115,7 @@ trait UserApprovalPlay extends Oauth2BodyReaderFilter with UserApproval with Ren
   }
 }
 
-private[playimpl] object UserExtractor {
+private[grants] object UserExtractor {
   import securesocial.core.SecuredRequest
   import securesocial.core.providers.UsernamePasswordProvider.UsernamePassword
   def apply(r: SecuredRequest[_]) = {

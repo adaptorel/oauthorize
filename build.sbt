@@ -1,27 +1,21 @@
 import play.Project._
 
-name := "oauthorize-play-2.2"
+name := "oauthorize-play-22x"
 
-version := "0.1"
+version in ThisBuild := "0.1"
 
-organization := "com.oauthorize"
+organization in ThisBuild := "com.oauthorize"
 
 libraryDependencies ++= Seq(
-  jdbc,
-  anorm,
-  cache,
   "ws.securesocial" %% "securesocial" % "2.1.3"
 )     
 
-publishTo := {
+publishTo in ThisBuild := {
   val localPublishRepo = "/Users/dorel/Work/_bitbucket_maven"
-  if (version.value.trim.endsWith("SNAPSHOT")) 
-    Some(Resolver.file("snapshots", new File(localPublishRepo + "/snapshots")))
-  else
-    Some(Resolver.file("releases", new File(localPublishRepo + "/releases")))
+  Some(Resolver.file("releases", new File(localPublishRepo)))
 }
 
-publishMavenStyle := true
+publishMavenStyle in ThisBuild := true
 
 play.Project.playScalaSettings
 

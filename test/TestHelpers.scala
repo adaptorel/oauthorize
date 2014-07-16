@@ -1,11 +1,11 @@
-package test
+package oauthorize.test
 
 import java.net.URLEncoder
 import play.api.test._
 import play.api.test.Helpers._
 import play.api.libs.json._
 import play.api.libs.ws.WS
-import app.Oauth
+import oauthorize.playapp.Oauth
 import oauthorize.model.Oauth2Client
 import oauth2.spec.GrantTypes
 import com.ning.http.client.Realm

@@ -1,14 +1,14 @@
-package grants.playimpl
+package oauthorize.playapp.grants
+
+import play.api.libs.json._
+import play.api.mvc._
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 import oauth2.spec.model._
 import oauth2.spec._
 import oauthorize.model._
 import oauthorize.utils._
-import oauthorize.grants._
-
-import play.api.libs.json._
-import play.api.mvc._
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
+import oauthorize.grants.UserApproval
 import scala.concurrent.Future
 
 object json {

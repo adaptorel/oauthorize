@@ -1,9 +1,8 @@
-package app
+package oauthorize.playapp
 
 import oauthorize.model._
 import oauthorize.service._
 import grants._
-import grants.playimpl._
 import play.api.mvc._
 import play.api.mvc.Results.InternalServerError
 import play.api.GlobalSettings
@@ -37,7 +36,7 @@ class Oauth2Filters extends WithFilters(
 trait Oauth2GlobalErorrHandler extends GlobalSettings {
   import oauthorize.utils.err
   import oauth2.spec._
-  import grants.playimpl.json._
+  import grants.json._
   import scala.concurrent.Future
   import play.api.libs.json.Json
   override def onError(request: RequestHeader, ex: Throwable) = {

@@ -1,4 +1,4 @@
-package test
+package oauthorize.test
 
 import org.specs2.mutable._
 import org.specs2.runner._
@@ -10,12 +10,11 @@ import oauth2.spec.AccessTokenErrors._
 import oauth2.spec.Req._
 import oauth2.spec.GrantTypes
 import oauthorize.model._
+import oauthorize.playapp.Oauth
 import org.apache.commons.codec.binary.Base64
 import java.net.URLDecoder
 import java.net.URLEncoder
 import play.api.Play
-import app.OauthMix
-import app.Oauth
 import play.api.libs.ws.WS
 import com.ning.http.client.Realm
 import play.api.libs.ws.WS.WSRequestHolder

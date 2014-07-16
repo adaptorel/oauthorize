@@ -1,4 +1,4 @@
-package test
+package oauthorize.test
 
 import org.specs2.mutable._
 import org.specs2.runner._
