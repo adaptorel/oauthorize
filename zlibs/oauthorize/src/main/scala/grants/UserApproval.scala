@@ -1,15 +1,12 @@
 package oauthorize.grants
 
-import oauth2.spec.{ResponseType, TokenType}
-import oauth2.spec.TokenType._
-import oauth2.spec.model.ImplicitResponse
+import oauth2.spec.{ ResponseType, TokenType }
 import oauth2.spec.Error._
 import oauth2.spec.AuthzErrors._
 import oauth2.spec.Req._
 import oauthorize.model._
 import oauthorize.service._
 import oauthorize.utils._
-import scala.collection.immutable.ListMap
 import scala.concurrent.Future
 
 object UserApproval {
@@ -55,20 +52,18 @@ trait UserApproval extends Dispatcher {
       req.param(UserApproval.AutoApproveKey).map(_ == "true").getOrElse(false)
   }
 
+  import scala.collection.immutable.ListMap
   private def renderImplicitResponse(req: OauthRequest, oauthClient: Oauth2Client, authzRequest: AuthzRequest, user: Oauth2User) = {
     import oauth2.spec.AccessTokenResponseParams._
-
     val token = generateAccessToken(oauthClient, authzRequest.authScope, Option(user.id))
     val stored = storeTokens(AccessAndRefreshTokens(token), oauthClient)
-    val expiresIn = stored.accessToken.validity
-    val implicitResponse = ImplicitResponse(stored.accessToken.value, bearer, expiresIn, authzRequest.authScope.mkString(ScopeSeparator), authzRequest.state)
-    val params = ListMap[String, Any]() +
-      (access_token -> implicitResponse.access_token) +
+    val tmp = ListMap[String, String]() +
+      (access_token -> stored.accessToken.value) +
       (token_type -> TokenType.bearer) +
-      (expires_in -> implicitResponse.expires_in) +
-      (scope -> implicitResponse.scope) +
-      (state -> implicitResponse.state)
-    OauthRedirect(encodedQueryString(oauthClient.redirectUri, params, "#"), Map())
+      (expires_in -> stored.accessToken.validity.toString) +
+      (scope -> authzRequest.authScope.mkString(ScopeSeparator))
+    val params = authzRequest.state.map(st => tmp + (state -> st)).getOrElse(tmp)
+    OauthRedirect(oauthClient.redirectUri, params, true)
   }
 
   private def renderAuthzResponse(authzRequest: AuthzRequest, client: Oauth2Client, req: OauthRequest, u: Oauth2User) = {

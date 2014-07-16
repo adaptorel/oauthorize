@@ -9,10 +9,6 @@ object utils {
   import org.apache.commons.codec.binary.Hex
   import java.security.MessageDigest
 
-  type GrantType = String
-  type ResponseType = String
-  type State = String
-
   val ScopeSeparator = " "
 
   def err(err: String, statusCode: Int): Err = {
@@ -36,7 +32,7 @@ object utils {
   }
 
   import java.net.URLEncoder
-  def encodedQueryString(uri: String, params: Map[String, Any], prefix: String = "?"): String = {
+  def encodedQueryString(uri: String, params: Map[String, String], prefix: String = "?"): String = {
     def valueOf(x: Any) = x match {
       case Some(v) => URLEncoder.encode(v.toString, "UTF8")
       case v => URLEncoder.encode(v.toString, "UTF8")

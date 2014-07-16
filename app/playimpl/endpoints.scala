@@ -62,7 +62,7 @@ trait ImplicitGrantPlay extends Oauth2BodyReaderFilter with ImplicitGrant with R
   this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator =>
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
-    def process(u: Oauth2User): SimpleResult = processImplicitRequest(a, u).fold(err => err, good => transformReponse(good))
+    def process(u: Oauth2User): SimpleResult = processImplicitRequest(a, u).fold(err => err, good => good)
     Some(secureInvocation(process, req))
   }
 
@@ -92,12 +92,11 @@ trait UserApprovalPlay extends Oauth2BodyReaderFilter with UserApproval with Ren
     Some(secureInvocation(lazyResult, req))
   }
 
-  private def lazyProcessApprove(a: OauthRequest, u: Oauth2User) = {
-    val res = processApprove(a, u)
-    Redirect(res.uri, res.params.map(z => (z._1 -> Seq(z._2))), 302)
+  private def lazyProcessApprove(a: OauthRequest, u: Oauth2User): SimpleResult = {
+    processApprove(a, u)
   }
 
-  private def displayUserApprovalPage(a: OauthRequest) = {
+  private def displayUserApprovalPage(a: OauthRequest): SimpleResult = {
     (for {
       authzRequestJsonString <- a.param(UserApproval.AuthzRequestKey)
       authzReq <- unmarshal(authzRequestJsonString)
@@ -106,7 +105,7 @@ trait UserApprovalPlay extends Oauth2BodyReaderFilter with UserApproval with Ren
       Ok(views.html.user_approval(authzReq, authzRequestJsonString, client))
     }) getOrElse ({
       logError("Fatal error when initiating user approval after user authentication! The authorization code, authorization request or the client weren't found. Shouldn't have got here EVER, we're controlling the whole flow!")
-      renderErrorAsResult(err(server_error, 500))
+      err(server_error, 500)
     })
   }
 

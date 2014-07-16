@@ -3,6 +3,7 @@ package grants.playimpl
 import oauth2.spec.model._
 import oauth2.spec._
 import oauthorize.model._
+import oauthorize.utils._
 import oauthorize.grants._
 
 import play.api.libs.json._
@@ -12,7 +13,6 @@ import scala.concurrent.Future
 
 object json {
   implicit val AuthzCodeResponseFormat = Json.format[AuthzCodeResponse]
-  implicit val ImplicitResponseFormat = Json.format[ImplicitResponse]
   implicit val AccessTokenResponseFormat = Json.format[AccessTokenResponse]
   implicit val UserIdFormat = Json.format[UserId]
   implicit val Oauth2UserFormat = Json.format[Oauth2User]
@@ -25,7 +25,7 @@ object json {
 }
 
 trait RenderingUtils extends Controller {
-  
+
   this: Oauth2Config =>
 
   import json._
@@ -48,11 +48,13 @@ trait RenderingUtils extends Controller {
   }
 
   implicit def transformReponse(response: OauthResponse) = response match {
-    case r: OauthRedirect => Redirect(r.uri, r.params.map(tuple => (tuple._1 -> Seq(tuple._2))), 302)
     case a: InitiateAuthzApproval => Redirect(userApprovalEndpoint, Map(UserApproval.AuthzRequestKey -> authzParam(a.authzRequest), UserApproval.AutoApproveKey -> Seq(a.client.autoapprove.toString)), 302)
+    case r: OauthRedirect =>
+      if (r.paramsAsUrlFragment)
+        Redirect(encodedQueryString(r.uri, r.params, "#"), Map(), 302)
+      else
+        Redirect(r.uri, r.params.map(tuple => (tuple._1 -> Seq(tuple._2))), 302)
   }
-  
-  private def authzParam(authzReq: AuthzRequest) = Seq(Json.stringify(Json.toJson(authzReq)))
-  private def implicitParam(implicitResponse: ImplicitResponse) = Seq(Json.stringify(Json.toJson(implicitResponse)))
 
+  private def authzParam(authzReq: AuthzRequest) = Seq(Json.stringify(Json.toJson(authzReq)))
 }
