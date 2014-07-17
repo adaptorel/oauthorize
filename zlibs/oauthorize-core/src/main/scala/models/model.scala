@@ -10,15 +10,18 @@ case class RefreshTokenRequest(grantType: GrantType, refreshToken: String) exten
 case class ClientCredentialsRequest(client: Oauth2Client, scope: Option[String]) extends ClientCredentialsRequestValidation
 case class ResourceOwnerCredentialsRequest(grantType: GrantType, username: String, password: String, authScope: Seq[String]) extends ResourceOwnerCredentialsRequestValidation
 
-object ExpirationHelper {
-  def isExpired(token: { def validity: Long; def created: Long }): Boolean = { token.created + token.validity * 1000 < System.currentTimeMillis }
+abstract class Token {
+  def value: String
+  def clientId: String
+  def tokenScope: Seq[String]
+  def validity: Long
+  def created: Long
+  def userId: Option[UserId]
+  def isExpired = created + validity * 1000 < System.currentTimeMillis
 }
-case class AccessToken(value: String, clientId: String, scope: Seq[String], validity: Long, created: Long, userId: Option[UserId]) {
-  def isExpired = ExpirationHelper.isExpired(this)
-}
-case class RefreshToken(value: String, clientId: String, tokenScope: Seq[String], validity: Long, created: Long, userId: Option[UserId]) {
-  def isExpired = ExpirationHelper.isExpired(this)
-}
+
+case class AccessToken(value: String, clientId: String, tokenScope: Seq[String], validity: Long, created: Long, userId: Option[UserId]) extends Token
+case class RefreshToken(value: String, clientId: String, tokenScope: Seq[String], validity: Long, created: Long, userId: Option[UserId]) extends Token
 
 case class AccessAndRefreshTokens(accessToken: AccessToken, refreshToken: Option[RefreshToken] = None)
 
