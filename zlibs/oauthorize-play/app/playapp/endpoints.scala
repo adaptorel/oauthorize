@@ -87,7 +87,7 @@ trait UserApprovalPlay extends Oauth2BodyReaderFilter with UserApproval with Ren
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
     logInfo(s"processing user approval: $a");
     def lazyResult(u: Oauth2User) =
-      if ("POST" == a.method || a.param(UserApproval.AutoApproveKey).map(_ == "true").getOrElse(false))
+      if ("POST" == a.method || a.param(UserApproval.AutoApproveKey).exists(_ == "true"))
         lazyProcessApprove(a, u)
       else displayUserApprovalPage(a)
     Some(secureInvocation(lazyResult, req))

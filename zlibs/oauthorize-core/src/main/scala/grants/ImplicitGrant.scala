@@ -19,7 +19,7 @@ trait ImplicitGrant extends Dispatcher {
     val res =
       r.path == authorizeEndpoint &&
         r.method == "GET" &&
-        r.param(Req.response_type).map(_ == ResponseType.token).getOrElse(false)
+        r.param(Req.response_type).exists(_ == ResponseType.token)
     res
   }
 

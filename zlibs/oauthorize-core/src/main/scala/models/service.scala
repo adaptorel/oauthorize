@@ -58,7 +58,7 @@ private object InMemoryStoreDelegate extends Oauth2Store {
   override def getAuthzRequest(authzCode: String) = authzCodeStore.get(authzCode)
   override def storeTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client) = { accessTokenStore.put(oauthClient.clientId, accessAndRefreshTokens); accessAndRefreshTokens }
   override def getAccessToken(value: String) = accessTokenStore.values.find(x => x.accessToken.value == value).map(_.accessToken)
-  override def getRefreshToken(value: String) = accessTokenStore.values.find(x => x.refreshToken.map(_.value == value).getOrElse(false)).flatMap(_.refreshToken)
+  override def getRefreshToken(value: String) = accessTokenStore.values.find(x => x.refreshToken.exists(_.value == value)).flatMap(_.refreshToken)
 }
 
 trait InMemoryOauth2Store extends Oauth2Store {
