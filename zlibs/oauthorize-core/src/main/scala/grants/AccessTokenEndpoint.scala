@@ -16,7 +16,7 @@ trait AccessTokenEndpoint extends Dispatcher {
   override def matches(r: OauthRequest) = {
     val res = r.path == accessTokenEndpoint &&
       r.method == "POST" &&
-      r.param(Req.grant_type).exists(v => v == GrantTypes.authorization_code)
+      r.param(Req.grant_type).exists(_ == GrantTypes.authorization_code)
     res
   }
     
