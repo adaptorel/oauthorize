@@ -16,8 +16,7 @@ trait RefreshTokenEndpoint extends Dispatcher {
   override def matches(r: OauthRequest) = {
     val res = r.path == accessTokenEndpoint &&
       r.method == "POST" &&
-      r.param(Req.grant_type)
-      .map(v => v == GrantTypes.refresh_token).getOrElse(false)
+      r.param(Req.grant_type).exists(v => v == GrantTypes.refresh_token)
     res
   }
 

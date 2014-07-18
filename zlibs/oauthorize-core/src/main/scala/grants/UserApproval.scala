@@ -48,8 +48,8 @@ trait UserApproval extends Dispatcher {
   }
 
   private def isApproved(req: OauthRequest) = {
-    req.param(UserApproval.Allow).map(_ == UserApproval.AllowValue).getOrElse(false) ||
-      req.param(UserApproval.AutoApproveKey).map(_ == "true").getOrElse(false)
+    req.param(UserApproval.Allow).exists(_ == UserApproval.AllowValue) ||
+      req.param(UserApproval.AutoApproveKey).exists(_ == "true")
   }
 
   import scala.collection.immutable.ListMap
