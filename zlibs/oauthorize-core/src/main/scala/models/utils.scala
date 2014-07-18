@@ -1,8 +1,12 @@
 package oauthorize
 
+import oauthorize.model.ClientAuthentication
+import oauthorize.model.ClientAuthentication
+
 object utils {
 
   import oauth2.spec.Error._
+  import oauth2.spec.Req
   import oauth2.spec.StatusCodes._
   import oauthorize.model.{ Err, OauthRequest, ClientAuthentication }
   import org.apache.commons.codec.binary.{ Hex, Base64 }
@@ -44,9 +48,15 @@ object utils {
   object BasicAuthentication {
 
     def apply(request: OauthRequest) = {
-      request.header("Authorization").filter(_.startsWith("Basic ")) flatMap { authHeader =>
-        fromBase64(authHeader.replaceAll("Basic ", ""))
-      }
+      request.header("Authorization").filter(_.startsWith("Basic "))
+        .flatMap(a => fromBase64(a.replaceAll("Basic ", "")))
+        /*
+         * I totally hate this but the oauth spec says the client
+         * can choose to send the client_id and client_secret as POST body params
+         * 
+         * TODO consider this a security vulnerability and enable it with a config flag
+         */
+        .orElse(fromRequestBody(request))
     }
 
     private def fromBase64(base64: String): Option[ClientAuthentication] = {
@@ -54,6 +64,15 @@ object utils {
       if (clientIdAndPassword.length == 2) {
         Some(ClientAuthentication(clientIdAndPassword(0), clientIdAndPassword(1)))
       } else None
+    }
+
+    private def fromRequestBody(request: OauthRequest): Option[ClientAuthentication] = {
+      for {
+        clientId <- request.param(Req.client_id)
+        clientSecret <- request.param(Req.client_secret)
+      } yield {
+        ClientAuthentication(clientId, clientSecret)
+      }
     }
   }
 

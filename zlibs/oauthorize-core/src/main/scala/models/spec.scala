@@ -18,6 +18,7 @@ object GrantTypes {
 
 object Req {
   val client_id = "client_id"
+  val client_secret = "client_secret"  
   val state = "state"
   val response_type = "response_type"
   val redirect_uri = "redirect_uri"

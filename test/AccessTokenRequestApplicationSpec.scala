@@ -39,14 +39,26 @@ class AccessTokenRequestApplicationSpec extends PlaySpecification with TestHelpe
       (resp.json \ "error_description") must equalTo(JsString("bad credentials"))
     }
 
-    //TODO This fails now because we must fake a logged in user with SecureSocial for the approval to pass
+    val testApp = FakeApplication(
+      withoutPlugins = Seq("securesocial.core.DefaultAuthenticatorStore"),
+      additionalPlugins = Seq("oauthorize.test.FakeLoggedInUserAuthenticatorStore"))
+
     "respond with 200 and the access token if request is correct" in new WithServer(port = 3333) {
       import oauth2.spec.AccessTokenResponseParams._
-      Oauth.storeClient(Oauth2Client("the_client", "pass", Seq("global"), Seq(GrantTypes.authorization_code, refresh_token), RedirectUri, Seq(), 3600, 3600, None, true))
-      val authzResp = await(WS.url(s"$TestUri/oauth/authorize?client_id=the_client&response_type=code&state=555&scope=global&redirect_uri=$RedirectUri").get)
-      val P = """.*?code=(.*)&state=555""".r
-      val P(authzCode) = authzResp.header("Location").get
+      val authzCode = AuthzHelper.authorize
       val accessResp = postf1("/oauth/token", code -> URLDecoder.decode(authzCode, "utf8"), grant_type -> GrantTypes.authorization_code, redirect_uri -> RedirectUri)
+      accessResp.status must equalTo(200)
+      (accessResp.json \ access_token).as[String] must beMatching(".{53}")
+      (accessResp.json \ refresh_token).as[String] must beMatching(".{53}")
+      (accessResp.json \ token_type).as[String] must equalTo("bearer")
+      (accessResp.json \ scope).as[String] must equalTo("global")
+      (accessResp.json \ expires_in).as[Int] must beGreaterThan(0)
+    }
+
+    s"accept client credentials as POST body" in new WithServer(port = 3333, app = testApp) {
+      import oauth2.spec.AccessTokenResponseParams._
+      val authzCode = AuthzHelper.authorize
+      val accessResp = postfWoBasicAuth("/oauth/token", client_id -> "the_client", client_secret -> "pass", code -> URLDecoder.decode(authzCode, "utf8"), grant_type -> GrantTypes.authorization_code, redirect_uri -> RedirectUri)
       accessResp.status must equalTo(200)
       (accessResp.json \ access_token).as[String] must beMatching(".{53}")
       (accessResp.json \ refresh_token).as[String] must beMatching(".{53}")

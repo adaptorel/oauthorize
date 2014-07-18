@@ -41,24 +41,21 @@ class AuthzRequestApplicationSpec extends PlaySpecification with TestHelpers {
       (resp.json \ "error_description") must equalTo(JsString(s"missmatched: $redirect_uri"))
     }
 
-    //TODO This fails now because we must fake a logged in user with SecureSocial for the approval to pass
     "send 302 if response_type is correct" in new WithServer(port = 3333) {
-      val client = Oauth2Client("a", "a", Seq("internal"), Seq("authorization_code"), RedirectUri, Seq(), 3600, 3600, None, true)
-      Oauth.storeClient(client)
-      val CodeParamRegex = """.*\?code=(.*)&state=555""".r
-      val resp = await(WS.url(s"$TestUri/oauth/authorize?client_id=a&response_type=code&state=555&redirect_uri=$RedirectUri&scope=internal").get)
-      resp.status must equalTo(302)
-      val expectedUri = resp.header("Location").get
-      val CodeParamRegex(authzCode) = expectedUri
+      val authzCode = AuthzHelper.authorize
       URLDecoder.decode(authzCode, "utf-8") must beMatching(".{53}")
-      expectedUri must beMatching(".*state=555.*")
     }
 
     "send 302 and hash uri if implicit grant type" in new WithServer(port = 3333) {
       val client = Oauth2Client("a", "a", Seq("internal"), Seq("authorization_code", "implicit"), RedirectUri, Seq(), 3600, 3600, None, true)
       Oauth.storeClient(client)
-      val resp = await(WS.url(s"$TestUri/oauth/authorize?client_id=a&response_type=token&state=555&redirect_uri=$RedirectUri&scope=internal").get)
-      val expectedUri = resp.header("Location").get
+      val resp = await(WS.url(s"$TestUri/oauth/authorize?client_id=a&response_type=token&state=555&redirect_uri=$RedirectUri&scope=internal")
+        .withHeaders("Cookie" -> authenticatedCookie).withFollowRedirects(true).get)
+      /*
+       *  ERROR again cause it passes everything and eventually redirects to the
+       *  callback redirect URI which doesn't exist
+       */  
+      val expectedUri = resp.ahcResponse.getUri.toString
       val Regex = ".*#access_token=(.*)&token_type=(.*)&expires_in=(.*)&scope=(.*)&state=(.*)".r
       val Regex(accessToken, tokenType, expiresIn, scope, state) = expectedUri
       URLDecoder.decode(accessToken, "utf-8") must beMatching(".{53}")
@@ -67,5 +64,23 @@ class AuthzRequestApplicationSpec extends PlaySpecification with TestHelpers {
       scope must equalTo("internal")
       state must equalTo("555")
     }
+  }
+}
+
+object AuthzHelper extends TestHelpers {
+  def authorize(): String = {
+    import oauth2.spec.AccessTokenResponseParams._
+    Oauth.storeClient(Oauth2Client("the_client", encrypt("pass"), Seq("global"), Seq(GrantTypes.authorization_code, refresh_token), RedirectUri, Seq(), 3600, 3600, None, true))
+    val authzResp = await(WS.url(s"$TestUri/oauth/authorize?client_id=the_client&response_type=code&state=555&scope=global&redirect_uri=$RedirectUri")
+      .withHeaders("Cookie" -> authenticatedCookie)
+      .withFollowRedirects(true).get)
+    val P = """.*?code=(.*)&state=555""".r
+    /*
+       * if successful authentication and authz code generation we extract the code
+       * from the erred request following the callback redirect. it's enough to extract
+       * the code from it
+       */
+    val P(authzCode) = authzResp.getAHCResponse.getUri.toString
+    authzCode
   }
 }
