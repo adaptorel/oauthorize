@@ -45,7 +45,7 @@ trait Oauth2RequestValidator extends Dispatcher {
   }
 
   private def invalidAccessTokenEndpointContentType(implicit r: OauthRequest) = {
-    if (r.path == accessTokenEndpoint && r.header("Content-Type").map(_ != "application/x-www-form-urlencoded").getOrElse(true)) {
+    if (r.path == accessTokenEndpoint && r.header("Content-Type").map(_.split(";")(0).trim != "application/x-www-form-urlencoded").getOrElse(true)) {
       Some(err(AuthzErrors.invalid_request, s"mandatory: Content-Type -> application/x-www-form-urlencoded"))
     } else None
   }

@@ -25,7 +25,7 @@ trait TestHelpers {
 
   def postfWoRegisteredClient(url: String, content: (String, String)*) = {
     val urlEncoded = content.map(pair => URLEncoder.encode(pair._1, "utf-8") + "=" + URLEncoder.encode(pair._2, "utf-8")).mkString("&")
-    await(WS.url(s"$TestUri$url").withAuth("no_client", "pass", Realm.AuthScheme.BASIC).withHeaders("Content-Type" -> "application/x-www-form-urlencoded").post(urlEncoded))
+    await(WS.url(s"$TestUri$url").withAuth("no_client", "pass", Realm.AuthScheme.BASIC).withHeaders("Content-Type" -> "application/x-www-form-urlencoded; charset=utf-8").post(urlEncoded))
   }
   
   def postfWoBasicAuth(url: String, content: (String, String)*) = {
@@ -40,7 +40,7 @@ trait TestHelpers {
   def postf(url: String, content: (String, String)*)(client: Option[Oauth2Client] = None): Response = {
     val urlEncoded = content.map(pair => URLEncoder.encode(pair._1, "utf-8") + "=" + URLEncoder.encode(pair._2, "utf-8")).mkString("&")
     Oauth.storeClient(client.getOrElse(Oauth2Client("the_client", encrypt("pass"), Seq("global"), Seq(GrantTypes.authorization_code, GrantTypes.refresh_token), RedirectUri, Seq(), 3600, 3600, None, true)))
-    await(WS.url(s"$TestUri$url").withAuth("the_client", "pass", Realm.AuthScheme.BASIC).withHeaders("Content-Type" -> "application/x-www-form-urlencoded").post(urlEncoded))
+    await(WS.url(s"$TestUri$url").withAuth("the_client", "pass", Realm.AuthScheme.BASIC).withHeaders("Content-Type" -> "application/x-www-form-urlencoded; charset=utf-8").post(urlEncoded))
   }
   
   def encrypt(pass: String) = Oauth.encodePassword(pass)
