@@ -13,7 +13,18 @@ trait PasswordEncoder {
 
 trait Sha256PasswordEncoder extends PasswordEncoder {
   override def encodePassword(pwd: String): String = sha256(pwd)
-  override def passwordMatches(rawPassword: String, encodedPassword: String): Boolean = sha256(rawPassword) == encodedPassword
+  override def passwordMatches(rawPassword: String, encodedPassword: String): Boolean = constantTimeEquals(sha256(rawPassword), encodedPassword)
+  private def constantTimeEquals(a: String, b: String) = {
+    if (a.length != b.length) {
+      false
+    } else {
+      var equal = 0
+      for (i <- 0 until a.length) {
+        equal |= a(i) ^ b(i)
+      }
+      equal == 0
+    }
+  }
 }
 
 trait BCryptPasswordEncoder extends PasswordEncoder {
