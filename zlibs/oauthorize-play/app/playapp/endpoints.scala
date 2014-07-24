@@ -117,9 +117,7 @@ trait UserApprovalPlay extends Oauth2BodyReaderFilter with UserApproval with Ren
 
 private[grants] object UserExtractor {
   import securesocial.core.SecuredRequest
-  import securesocial.core.providers.UsernamePasswordProvider.UsernamePassword
   def apply(r: SecuredRequest[_]) = {
-    val emailOrElseId = if (r.user.identityId.providerId == UsernamePassword) r.user.identityId.userId else r.user.email.getOrElse(r.user.identityId.userId)
-    oauthorize.model.Oauth2User(UserId(emailOrElseId, Option(r.user.identityId.providerId)))
+    oauthorize.model.Oauth2User(UserId(r.user.identityId.userId, Option(r.user.identityId.providerId)))
   }
 }
