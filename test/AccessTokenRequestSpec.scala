@@ -26,7 +26,7 @@ class AccessTokenRequestSpec extends Specification {
 
     val RedirUri = "http://www.a.com/cb"
     val WrongRedirUri = "http://www.aaa.com/cb"
-    val client = Oauth2Client("the_client", "pass", Seq("global"), Seq(GrantTypes.authorization_code, GrantTypes.refresh_token), RedirUri, Seq(), 3600, 3600, None, true)  
+    val client = Oauth2Client("the_client", SecretInfo("pass"), Seq("global"), Seq(GrantTypes.authorization_code, GrantTypes.refresh_token), RedirUri, Seq(), 3600, 3600, None, true)
     
     s"compare the code $client_id and authenticatedClientId" in {
       val authzRequest = AuthzRequest("other_client", null, RedirUri, Seq(), true)

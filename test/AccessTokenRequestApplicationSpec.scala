@@ -32,7 +32,7 @@ class AccessTokenRequestApplicationSpec extends PlaySpecification with TestHelpe
     }
 
     s"send 401 if bad client credentials" in new WithServer(port = 3333) {
-      val client = Some(Oauth2Client("the_client", Oauth.encodePassword("wrongpass"), Seq("global"), Seq(GrantTypes.authorization_code), RedirectUri, Seq(), 3600, 3600, None, false))
+      val client = Some(Oauth2Client("the_client", Oauth.hashClientSecret(SecretInfo("wrongpass")), Seq("global"), Seq(GrantTypes.authorization_code), RedirectUri, Seq(), 3600, 3600, None, false))
       val resp = postf("/oauth/token", grant_type -> GrantTypes.authorization_code, code -> "whatever", redirect_uri -> RedirectUri)(client)
       resp.status must equalTo(401)
       (resp.json \ "error") must equalTo(JsString(invalid_client))

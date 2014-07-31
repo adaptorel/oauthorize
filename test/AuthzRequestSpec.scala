@@ -16,7 +16,7 @@ class AuthzRequestSpec extends Specification {
 
     val Redir = "http://www.r.com/cb"
     val CorrectScope = Seq("internal")
-    implicit val client = Oauth2Client("a", "a", CorrectScope, Seq("authorization_code"), Redir, Seq(), 3600, 3600, None, true)
+    implicit val client = Oauth2Client("a", SecretInfo("a"), CorrectScope, Seq("authorization_code"), Redir, Seq(), 3600, 3600, None, true)
     
     s"contain a valid $client_id request param" in {
       AuthzRequest(null, null, Redir, CorrectScope, true).getError.map(_.error) must beSome(invalid_request)

@@ -7,6 +7,7 @@ import play.api.libs.json._
 import play.api.libs.ws.WS
 import oauthorize.playapp.Oauth
 import oauthorize.model.Oauth2Client
+import oauthorize.model.SecretInfo
 import oauth2.spec.GrantTypes
 import com.ning.http.client.Realm
 import play.api.libs.ws.Response
@@ -43,7 +44,7 @@ trait TestHelpers {
     await(WS.url(s"$TestUri$url").withAuth("the_client", "pass", Realm.AuthScheme.BASIC).withHeaders("Content-Type" -> "application/x-www-form-urlencoded; charset=utf-8").post(urlEncoded))
   }
   
-  def encrypt(pass: String) = Oauth.encodePassword(pass)
+  def encrypt(pass: String) = Oauth.hashClientSecret(SecretInfo(pass))
   
   def authenticatedCookie = Authenticator.create(TestUser).fold(z => "", c => Cookies.encode(Seq(c.toCookie)))
   

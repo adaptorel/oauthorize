@@ -62,7 +62,7 @@ class ResourceOwnerCredentialsApplicationSpec extends PlaySpecification with Tes
     }
 
     s"send 401 if bad client credentials" in new WithServer(port = 3333) {
-      val client = Some(Oauth2Client("the_client", Oauth.encodePassword("wrongpass"), Seq("global"), Seq(GrantTypes.password), RedirectUri, Seq(), 3600, 3600, None, false))
+      val client = Some(Oauth2Client("the_client", Oauth.hashClientSecret(SecretInfo("wrongpass")), Seq("global"), Seq(GrantTypes.password), RedirectUri, Seq(), 3600, 3600, None, false))
       val resp = postf("/oauth/token", grant_type -> GrantTypes.password, username -> "whatever", password -> "whatever", scope -> "global")(client)
       resp.status must equalTo(401)
       (resp.json \ "error") must equalTo(JsString(invalid_client))
@@ -70,7 +70,7 @@ class ResourceOwnerCredentialsApplicationSpec extends PlaySpecification with Tes
     }
 
     s"send 400 if $password grant type is not supported" in new WithServer(port = 3333) {
-      val client = Some(Oauth2Client("the_client", Oauth.encodePassword("pass"), Seq("global"), Seq(GrantTypes.authorization_code), RedirectUri, Seq(), 3600, 3600, None, false))
+      val client = Some(Oauth2Client("the_client", Oauth.hashClientSecret(SecretInfo("pass")), Seq("global"), Seq(GrantTypes.authorization_code), RedirectUri, Seq(), 3600, 3600, None, false))
       val resp = postf("/oauth/token", grant_type -> GrantTypes.password, username -> "a", "password" -> "a", scope -> "global")(client)
       resp.status must equalTo(400)
       (resp.json \ "error") must equalTo(JsString(unsupported_grant_type))
@@ -79,7 +79,7 @@ class ResourceOwnerCredentialsApplicationSpec extends PlaySpecification with Tes
 
     s"send 200 if request is correct" in new WithServer(port = 3333) {
       import oauth2.spec.AccessTokenResponseParams._
-      val client = Some(Oauth2Client("the_client", Oauth.encodePassword("pass"), Seq("global"), Seq(GrantTypes.password, GrantTypes.refresh_token), RedirectUri, Seq(), 3600, 3600, None, false))
+      val client = Some(Oauth2Client("the_client", Oauth.hashClientSecret(SecretInfo("pass")), Seq("global"), Seq(GrantTypes.password, GrantTypes.refresh_token), RedirectUri, Seq(), 3600, 3600, None, false))
       UserService.save(TestUser)
       val accessResp = postf("/oauth/token", grant_type -> GrantTypes.password, username -> "user@test.com", password -> "pass", "scope" -> "global")(client)
       accessResp.status must equalTo(200)

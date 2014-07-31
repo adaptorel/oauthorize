@@ -27,10 +27,6 @@ object utils {
     Err(err, Some(desc), None, Option(redirectUri), statusCode)
   }
 
-  private def sha256UUID() = {
-    sha256(UUID.randomUUID.toString)
-  }
-
   def sha256(value: String) = {
     new String(Hex.encodeHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes("UTF-8"))))
   }

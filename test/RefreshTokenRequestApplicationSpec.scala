@@ -41,7 +41,7 @@ class RefreshTokenRequestApplicationSpec extends PlaySpecification with TestHelp
     }
 
     s"send 401 if bad client credentials" in new WithServer(port = 3333) {
-      val client = Some(Oauth2Client("the_client", Oauth.encodePassword("wrongpass"), Seq("global"), Seq(GrantTypes.authorization_code, GrantTypes.refresh_token), RedirectUri, Seq(), 3600, 3600, None, false))
+      val client = Some(Oauth2Client("the_client", Oauth.hashClientSecret(SecretInfo("wrongpass")), Seq("global"), Seq(GrantTypes.authorization_code, GrantTypes.refresh_token), RedirectUri, Seq(), 3600, 3600, None, false))
       val resp = postf("/oauth/token", grant_type -> GrantTypes.refresh_token, refresh_token -> "whatever")(client)
       resp.status must equalTo(401)
       (resp.json \ "error") must equalTo(JsString(invalid_client))
@@ -50,7 +50,7 @@ class RefreshTokenRequestApplicationSpec extends PlaySpecification with TestHelp
 
     "respond with 200 and the access token if request is correct" in new WithServer(port = 3333) {
       import oauth2.spec.AccessTokenResponseParams._
-      val oauthClient = Oauth.storeClient(Oauth2Client("the_client", "pass", Seq("global"), Seq(GrantTypes.authorization_code, refresh_token), RedirectUri, Seq(), 3600, 3600, None, true))
+      val oauthClient = Oauth.storeClient(Oauth2Client("the_client", SecretInfo("pass"), Seq("global"), Seq(GrantTypes.authorization_code, refresh_token), RedirectUri, Seq(), 3600, 3600, None, true))
       val user = UserId("dorel@eloquentix.com", Some("google"))
       val accToken = Oauth.generateAccessToken(oauthClient, Seq("internal"), Some(user))
       val refToken = Oauth.generateRefreshToken(oauthClient, Seq("internal"), Some(user))

@@ -6,41 +6,22 @@ import java.util.UUID
 import java.security.SecureRandom
 import org.mindrot.jbcrypt.BCrypt
 
-trait PasswordEncoder {
-  def encodePassword(pwd: String): String
-  def passwordMatches(rawPassword: String, encodedPassword: String): Boolean
+trait ClientSecretHasher {
+  def hashClientSecret(info: SecretInfo): SecretInfo
+  def clientSecretMatches(rawSecret: String, info: SecretInfo): Boolean
 }
 
-trait Sha256PasswordEncoder extends PasswordEncoder {
-  override def encodePassword(pwd: String): String = sha256(pwd)
-  override def passwordMatches(rawPassword: String, encodedPassword: String): Boolean = constantTimeEquals(sha256(rawPassword), encodedPassword)
-  private def constantTimeEquals(a: String, b: String) = {
-    if (a.length != b.length) {
-      false
-    } else {
-      var equal = 0
-      for (i <- 0 until a.length) {
-        equal |= a(i) ^ b(i)
-      }
-      equal == 0
-    }
-  }
+trait Sha256ClientSecretHasher extends ClientSecretHasher {
+  lazy val hasher = new Sha256SecretHasher {}
+  override def hashClientSecret(info: SecretInfo): SecretInfo = SecretInfo(hasher.hashSecret(info), info.salt)
+  override def clientSecretMatches(rawSecret: String, info: SecretInfo): Boolean = hasher.secretMatches(rawSecret, info)
 }
 
-trait BCryptPasswordEncoder extends PasswordEncoder {
-  private val rnd = new SecureRandom
-  val rounds = 10
-  private def paddedRounds = { rounds.toString.reverse.padTo(2, "0").reverse.mkString }
-  private def prefix = "$2a$" + paddedRounds + "$"
-  override def encodePassword(pwd: String): String = BCrypt.hashpw(pwd, BCrypt.gensalt(rounds, rnd)).substring(7)
-  override def passwordMatches(rawPassword: String, encodedPassword: String): Boolean = {
-    (for {
-      raw <- Option(rawPassword)
-      enc <- Option(encodedPassword)
-    } yield {
-      enc.length == (60 - prefix.length) && BCrypt.checkpw(rawPassword, prefix + encodedPassword)
-    }) getOrElse (false)
-  }
+trait BCryptClientSecretHasher extends ClientSecretHasher {
+  val roundsNo = 10
+  lazy val hasher = new BCryptSecretHasher { override val rounds = roundsNo }
+  override def hashClientSecret(info: SecretInfo): SecretInfo = SecretInfo(hasher.hashSecret(info), info.salt)
+  override def clientSecretMatches(rawSecret: String, info: SecretInfo): Boolean = hasher.secretMatches(rawSecret, info)
 }
 
 trait Oauth2Store {
@@ -55,6 +36,62 @@ trait Oauth2Store {
 
 trait UserStore {
   def getUser(id: UserId): Option[Oauth2User]
+}
+
+trait UserPasswordHasher {
+  def hashUserSecret(info: SecretInfo): String
+  def userPasswordMatches(rawPassword: String, info: SecretInfo): Boolean
+}
+
+trait BCryptUserPasswordHasher extends UserPasswordHasher with BCryptSecretHasher {
+  override def hashUserSecret(info: SecretInfo): String = hashSecret(info)
+  def userPasswordMatches(rawPassword: String, info: SecretInfo): Boolean = secretMatches(rawPassword, info)
+}
+
+trait AuthzCodeGenerator {
+  def generateCode(authzRequest: AuthzRequest): String
+  def generateAccessToken(oauthClient: Oauth2Client, scope: Seq[String], userId: Option[UserId]): AccessToken
+  def generateRefreshToken(oauthClient: Oauth2Client, scope: Seq[String], userId: Option[UserId]): RefreshToken
+}
+
+trait DefaultAuthzCodeGenerator extends AuthzCodeGenerator {
+  this: ClientSecretHasher =>
+  override def generateCode(authzRequest: AuthzRequest) = newToken
+  override def generateAccessToken(oauthClient: Oauth2Client, authScope: Seq[String], userId: Option[UserId]) = AccessToken(newToken, oauthClient.clientId, authScope, oauthClient.accessTokenValidity, System.currentTimeMillis, userId)
+  override def generateRefreshToken(oauthClient: Oauth2Client, tokenScope: Seq[String], userId: Option[UserId]) = RefreshToken(newToken, oauthClient.clientId, tokenScope, oauthClient.refreshtokenValidity, System.currentTimeMillis, userId)
+  def newToken = hashClientSecret(SecretInfo(UUID.randomUUID().toString)).secret
+}
+
+sealed trait Sha256SecretHasher {
+  def hashSecret(info: SecretInfo): String = sha256(info.salt.getOrElse("") + info.secret)
+  def secretMatches(rawPassword: String, info: SecretInfo): Boolean = constantTimeEquals(sha256(info.salt.getOrElse("") + rawPassword), info.secret)
+  private def constantTimeEquals(a: String, b: String) = {
+    if (a.length != b.length) {
+      false
+    } else {
+      var equal = 0
+      for (i <- 0 until a.length) {
+        equal |= a(i) ^ b(i)
+      }
+      equal == 0
+    }
+  }
+}
+
+sealed trait BCryptSecretHasher {
+  private val rnd = new SecureRandom
+  val rounds = 10
+  private def paddedRounds = { rounds.toString.reverse.padTo(2, "0").reverse.mkString }
+  private def prefix = "$2a$" + paddedRounds + "$"
+  def hashSecret(info: SecretInfo): String = BCrypt.hashpw(info.secret, BCrypt.gensalt(rounds, rnd)).substring(7)
+  def secretMatches(rawPassword: String, info: SecretInfo): Boolean = {
+    (for {
+      raw <- Option(rawPassword)
+      enc <- Option(info.secret)
+    } yield {
+      enc.length == (60 - prefix.length) && BCrypt.checkpw(rawPassword, prefix + info.secret)
+    }) getOrElse (false)
+  }
 }
 
 private object InMemoryStoreDelegate extends Oauth2Store {
@@ -80,18 +117,4 @@ trait InMemoryOauth2Store extends Oauth2Store {
   override def storeTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client) = InMemoryStoreDelegate.storeTokens(accessAndRefreshTokens, oauthClient)
   override def getAccessToken(value: String) = InMemoryStoreDelegate.getAccessToken(value)
   override def getRefreshToken(value: String) = InMemoryStoreDelegate.getRefreshToken(value)
-}
-
-trait AuthzCodeGenerator {
-  def generateCode(authzRequest: AuthzRequest): String
-  def generateAccessToken(oauthClient: Oauth2Client, scope: Seq[String], userId: Option[UserId]): AccessToken
-  def generateRefreshToken(oauthClient: Oauth2Client, scope: Seq[String], userId: Option[UserId]): RefreshToken
-}
-
-trait DefaultAuthzCodeGenerator extends AuthzCodeGenerator {
-  this: PasswordEncoder =>
-  override def generateCode(authzRequest: AuthzRequest) = newToken
-  override def generateAccessToken(oauthClient: Oauth2Client, authScope: Seq[String], userId: Option[UserId]) = AccessToken(newToken, oauthClient.clientId, authScope, oauthClient.accessTokenValidity, System.currentTimeMillis, userId)
-  override def generateRefreshToken(oauthClient: Oauth2Client, tokenScope: Seq[String], userId: Option[UserId]) = RefreshToken(newToken, oauthClient.clientId, tokenScope, oauthClient.refreshtokenValidity, System.currentTimeMillis, userId)
-  def newToken = encodePassword(UUID.randomUUID().toString)
 }

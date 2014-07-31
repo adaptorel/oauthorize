@@ -40,12 +40,13 @@ case class InitiateAuthzApproval(authzRequest: AuthzRequest, client: Oauth2Clien
 case class Err(error: String, error_description: Option[String] = None, error_uri: Option[String] = None,
   @transient redirect_uri: Option[String] = None, @transient status_code: Int = StatusCodes.BadRequest) extends ErrorResponse(error, error_description, error_uri) with OauthResponse
 
-case class Oauth2Client(clientId: String, clientSecret: String, scope: Seq[String] = Seq(), authorizedGrantTypes: Seq[String] = Seq(),
+case class Oauth2Client(clientId: String, secretInfo: SecretInfo, scope: Seq[String] = Seq(), authorizedGrantTypes: Seq[String] = Seq(),
   redirectUri: String, authorities: Seq[String] = Seq(), accessTokenValidity: Long = 3600, refreshtokenValidity: Long = 604800,
   additionalInfo: Option[String], autoapprove: Boolean = false)
 
 case class UserId(value: String, provider: Option[String])
-case class Oauth2User(id: UserId, pwd: Option[String] = None)
+case class SecretInfo(secret: String, salt: Option[String] = None)
+case class Oauth2User(id: UserId, pwd: Option[SecretInfo] = None)
 
 case class ClientAuthentication(clientId: String, clientSecret: String)
 

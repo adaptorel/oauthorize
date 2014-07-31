@@ -10,7 +10,8 @@ import play.api.GlobalSettings
 trait OauthMix extends Oauth2DefaultsPlay
   with InMemoryOauth2Store
   with DefaultAuthzCodeGenerator
-  with BCryptPasswordEncoder
+  with BCryptClientSecretHasher
+  with BCryptUserPasswordHasher
 
 object Oauth extends OauthMix
 
@@ -20,7 +21,7 @@ object ImplicitGrant extends ImplicitGrantPlay with OauthMix
 object ClientCredentialsGrant extends ClientCredentialsGrantPlay with OauthMix
 object AccessTokenEndpoint extends AccessTokenEndpointPlay with OauthMix
 object RefreshTokenEndpoint extends RefreshTokenEndpointPlay with OauthMix
-object ResourceOwnerCredentialsGrant extends ResourceOwnerCredentialsGrantPlay with OauthMix with SecureSocialUserStore
+object ResourceOwnerCredentialsGrant extends ResourceOwnerCredentialsGrantPlay with OauthMix with SecureSocialUserStore 
 object UserApprovalEndpoint extends UserApprovalPlay with OauthMix
 
 class Oauth2Filters extends WithFilters(
@@ -65,7 +66,8 @@ trait Oauth2DefaultsPlay extends Oauth2Defaults with PlayLogging with PlayExecut
 trait SecureSocialUserStore extends UserStore {
   import securesocial.core._
   override def getUser(id: UserId) = {
-    UserService.find(IdentityId(id.value, id.provider.getOrElse("userpass"))).map(u => Oauth2User(UserId(u.identityId.userId, Option(u.identityId.providerId)), u.passwordInfo.map(_.password)))
+    UserService.find(IdentityId(id.value, id.provider.getOrElse("userpass")))
+      .map(u => Oauth2User(UserId(u.identityId.userId, Option(u.identityId.providerId)), u.passwordInfo.map(i => SecretInfo(i.password, i.salt))))
   }
 }
 
@@ -88,7 +90,7 @@ class BCryptPasswordHasher(app: play.api.Application) extends PasswordHasher {
    * @return a PasswordInfo containing the hashed password.
    */
   def hash(plainPassword: String): PasswordInfo = {
-    PasswordInfo(id, Oauth.encodePassword(plainPassword))
+    PasswordInfo(id, Oauth.hashUserSecret(SecretInfo(plainPassword)))
   }
 
   /**
@@ -99,6 +101,6 @@ class BCryptPasswordHasher(app: play.api.Application) extends PasswordHasher {
    * @return true if the password matches, false otherwise.
    */
   def matches(passwordInfo: PasswordInfo, suppliedPassword: String): Boolean = {
-    Oauth.passwordMatches(suppliedPassword, passwordInfo.password)
+    Oauth.userPasswordMatches(suppliedPassword, SecretInfo(passwordInfo.password))
   }
 }

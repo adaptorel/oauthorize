@@ -11,7 +11,7 @@ import scala.concurrent.Future
 
 trait ResourceOwnerCredentialsGrant extends Dispatcher {
 
-  this: Oauth2Defaults with PasswordEncoder with Oauth2Store with UserStore with AuthzCodeGenerator =>
+  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with UserStore with UserPasswordHasher with AuthzCodeGenerator =>
 
   override def matches(r: OauthRequest) = {
     val res = r.path == accessTokenEndpoint &&
@@ -27,7 +27,7 @@ trait ResourceOwnerCredentialsGrant extends Dispatcher {
       case None => Left(err(unauthorized_client, "unauthorized client", StatusCodes.Unauthorized))
       case Some(basicAuth) => getClient(basicAuth.clientId) match {
         case None => Left(err(invalid_client, "unregistered client", StatusCodes.Unauthorized))
-        case Some(client) if (!passwordMatches(basicAuth.clientSecret, client.clientSecret)) => Left(err(invalid_client, "bad credentials", StatusCodes.Unauthorized))
+        case Some(client) if (!clientSecretMatches(basicAuth.clientSecret, client.secretInfo)) => Left(err(invalid_client, "bad credentials", StatusCodes.Unauthorized))
         case Some(client) => {
           (req.param(grant_type), req.param(username), req.param(password), req.param(scope)) match {
             case (Some(grantType), Some(userName), Some(pwd), Some(authScope)) => {
@@ -48,7 +48,7 @@ trait ResourceOwnerCredentialsGrant extends Dispatcher {
       case None => {
         getUser(UserId(rq.username, None)) match {
           case None => Left(err(invalid_request, "no such user", 401))
-          case Some(usr) if (usr.pwd.map(v => !passwordMatches(rq.password, v)).getOrElse(true)) =>
+          case Some(usr) if (usr.pwd.map(info => !userPasswordMatches(rq.password, info)).getOrElse(true)) =>
             Left(err(invalid_request, "bad user credentials", 401))
           case Some(usr) => {
             /*

@@ -33,7 +33,7 @@ class AuthzRequestApplicationSpec extends PlaySpecification with TestHelpers {
     }
 
     "send 400 if redirect_uri is not matching client's" in new WithServer(port = 3333) {
-      val client = Oauth2Client("a", "a", Seq("internal"), Seq("authorization_code"), RedirectUri, Seq(), 3600, 3600, None, true)
+      val client = Oauth2Client("a", SecretInfo("a"), Seq("internal"), Seq("authorization_code"), RedirectUri, Seq(), 3600, 3600, None, true)
       Oauth.storeClient(client)
       val resp = await(WS.url(s"$TestUri/oauth/authorize?client_id=a&response_type=code&scope=internal&redirect_uri=wrongredirect").get)
       resp.status must equalTo(400)
@@ -47,7 +47,7 @@ class AuthzRequestApplicationSpec extends PlaySpecification with TestHelpers {
     }
 
     "send 302 and hash uri if implicit grant type" in new WithServer(port = 3333) {
-      val client = Oauth2Client("a", "a", Seq("internal"), Seq("authorization_code", "implicit"), RedirectUri, Seq(), 3600, 3600, None, true)
+      val client = Oauth2Client("a", SecretInfo("a"), Seq("internal"), Seq("authorization_code", "implicit"), RedirectUri, Seq(), 3600, 3600, None, true)
       Oauth.storeClient(client)
       val resp = await(WS.url(s"$TestUri/oauth/authorize?client_id=a&response_type=token&state=555&redirect_uri=$RedirectUri&scope=internal")
         .withHeaders("Cookie" -> authenticatedCookie).withFollowRedirects(true).get)

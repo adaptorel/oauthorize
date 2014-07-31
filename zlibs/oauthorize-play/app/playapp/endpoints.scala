@@ -20,7 +20,7 @@ trait Oauth2RequestValidatorPlay extends Oauth2BodyReaderFilter with Oauth2Reque
 }
 
 trait AccessTokenEndpointPlay extends Oauth2BodyReaderFilter with AccessTokenEndpoint with RenderingUtils {
-  this: Oauth2Defaults with PasswordEncoder with Oauth2Store with AuthzCodeGenerator =>
+  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with AuthzCodeGenerator =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
     Option(processAccessTokenRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
@@ -28,7 +28,7 @@ trait AccessTokenEndpointPlay extends Oauth2BodyReaderFilter with AccessTokenEnd
 }
 
 trait RefreshTokenEndpointPlay extends Oauth2BodyReaderFilter with RefreshTokenEndpoint with RenderingUtils {
-  this: Oauth2Defaults with PasswordEncoder with Oauth2Store with AuthzCodeGenerator =>
+  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with AuthzCodeGenerator =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
     Option(processRefreshTokenRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
@@ -36,7 +36,7 @@ trait RefreshTokenEndpointPlay extends Oauth2BodyReaderFilter with RefreshTokenE
 }
 
 trait ClientCredentialsGrantPlay extends Oauth2BodyReaderFilter with ClientCredentialsGrant with RenderingUtils {
-  this: Oauth2Defaults with PasswordEncoder with Oauth2Store with AuthzCodeGenerator =>
+  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with AuthzCodeGenerator =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
     Option(processClientCredentialsRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
@@ -52,7 +52,7 @@ trait AuthorizationCodePlay extends Oauth2BodyReaderFilter with AuthorizationCod
 }
 
 trait ResourceOwnerCredentialsGrantPlay extends Oauth2BodyReaderFilter with ResourceOwnerCredentialsGrant with RenderingUtils {
-  this: Oauth2Defaults with PasswordEncoder with Oauth2Store with UserStore with AuthzCodeGenerator =>
+  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with UserStore with UserPasswordHasher with AuthzCodeGenerator =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
     Option(processOwnerCredentialsRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))

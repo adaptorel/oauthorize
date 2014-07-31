@@ -1,6 +1,7 @@
 import play.api.Application
 import play.api.mvc.WithFilters
 import oauthorize.model.Oauth2Client
+import oauthorize.model.SecretInfo
 import oauthorize.playapp._
 
 object Global extends Oauth2Filters {
@@ -8,8 +9,9 @@ object Global extends Oauth2Filters {
     app.configuration.getBoolean("with.test.data").map { withTestData =>
       if (withTestData) {
         import securesocial.core._
-        val client = Oauth2Client("DB_SERVICE", Oauth.encodePassword("pass"), Seq("internal"), Seq("client_credentials"), "http://www.r.com/cb", Seq(), 3600, 3600, None, true)
-        val client2 = Oauth2Client("WEB_APP", Oauth.encodePassword("pass"), Seq("internal"), Seq("authorization_code, implicit"), "http://www.r.com/cb", Seq("ROLE_USER"), 3600, 3600, None, false)
+        val secretInfo = Oauth.hashClientSecret(SecretInfo("pass"))
+        val client = Oauth2Client("DB_SERVICE", secretInfo, Seq("internal"), Seq("client_credentials"), "http://www.r.com/cb", Seq(), 3600, 3600, None, true)
+        val client2 = Oauth2Client("WEB_APP", secretInfo, Seq("internal"), Seq("authorization_code, implicit"), "http://www.r.com/cb", Seq("ROLE_USER"), 3600, 3600, None, false)
         Oauth.storeClient(client)
         Oauth.storeClient(client2)
         val user = securesocial.core.SocialUser(

@@ -11,7 +11,7 @@ import scala.concurrent.Future
 
 trait AccessTokenEndpoint extends Dispatcher {
 
-  this: Oauth2Defaults with PasswordEncoder with Oauth2Store with AuthzCodeGenerator =>
+  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with AuthzCodeGenerator =>
 
   override def matches(r: OauthRequest) = {
     val res = r.path == accessTokenEndpoint &&
@@ -26,7 +26,7 @@ trait AccessTokenEndpoint extends Dispatcher {
       case None => Left(err(unauthorized_client, "unauthorized client", StatusCodes.Unauthorized))
       case Some(basicAuth) => getClient(basicAuth.clientId) match {
         case None => Left(err(invalid_client, "unregistered client", StatusCodes.Unauthorized))
-        case Some(client) if (!passwordMatches(basicAuth.clientSecret, client.clientSecret)) => Left(err(invalid_client, "bad credentials", StatusCodes.Unauthorized))
+        case Some(client) if (!clientSecretMatches(basicAuth.clientSecret, client.secretInfo)) => Left(err(invalid_client, "bad credentials", StatusCodes.Unauthorized))
         case Some(client) => {
           (req.param(grant_type), req.param(code), req.param(redirect_uri)) match {
             case (Some(grantType), Some(authzCode), Some(redirectUri)) => {

@@ -15,6 +15,7 @@ object json {
   implicit val AuthzCodeResponseFormat = Json.format[AuthzCodeResponse]
   implicit val AccessTokenResponseFormat = Json.format[AccessTokenResponse]
   implicit val UserIdFormat = Json.format[UserId]
+  implicit val SecretInfoFormat = Json.format[SecretInfo]
   implicit val Oauth2UserFormat = Json.format[Oauth2User]
   implicit val AuthzRequestFormat = Json.format[AuthzRequest]
   implicit object ErrorsFormat extends Format[Err] {
