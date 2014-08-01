@@ -45,7 +45,7 @@ trait UserPasswordHasher {
 
 trait BCryptUserPasswordHasher extends UserPasswordHasher with BCryptSecretHasher {
   override def hashUserSecret(info: SecretInfo): String = hashSecret(info)
-  def userPasswordMatches(rawPassword: String, info: SecretInfo): Boolean = secretMatches(rawPassword, info)
+  override def userPasswordMatches(rawPassword: String, info: SecretInfo): Boolean = secretMatches(rawPassword, info)
 }
 
 trait AuthzCodeGenerator {
