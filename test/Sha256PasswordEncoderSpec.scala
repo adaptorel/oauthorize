@@ -19,5 +19,9 @@ class Sha256PasswordEncoderSpec extends Specification {
       val pass = enc.hashClientSecret(SecretInfo("pass"))
       enc.clientSecretMatches("pass", pass) must beTrue
     }
+    s"encoded passwords with salt should match" in {
+      val pass = enc.hashClientSecret(SecretInfo("pass", Some("salt")))
+      enc.clientSecretMatches("pass", pass) must beTrue
+    }
   }
 }
