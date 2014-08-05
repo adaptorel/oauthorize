@@ -41,7 +41,7 @@ case class Err(error: String, error_description: Option[String] = None, error_ur
   @transient redirect_uri: Option[String] = None, @transient status_code: Int = StatusCodes.BadRequest) extends ErrorResponse(error, error_description, error_uri) with OauthResponse
 
 case class Oauth2Client(clientId: String, secretInfo: SecretInfo, scope: Seq[String] = Seq(), authorizedGrantTypes: Seq[String] = Seq(),
-  redirectUri: String, authorities: Seq[String] = Seq(), accessTokenValidity: Long = 3600, refreshtokenValidity: Long = 604800,
+  redirectUri: String, authorities: Seq[String] = Seq(), accessTokenValidity: Long = 3600, refreshTokenValidity: Long = 604800,
   additionalInfo: Option[String], autoapprove: Boolean = false)
 
 case class UserId(value: String, provider: Option[String])
