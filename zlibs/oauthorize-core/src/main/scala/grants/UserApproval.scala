@@ -35,7 +35,7 @@ trait UserApproval extends Dispatcher {
       authzRequest <- unmarshal(authzRequestJsonString)
       client <- getClient(authzRequest.clientId)
     } yield {
-      if (isApproved(req)) {
+      if (isApproved(req, client)) {
         if (ResponseType.token == authzRequest.responseType) {
           renderImplicitResponse(req, client, authzRequest, u)
         } else {
@@ -47,9 +47,12 @@ trait UserApproval extends Dispatcher {
     }) getOrElse (throw new IllegalStateException("Process approval failure because of missing code, authzRequest, client or Allow parameter"))
   }
 
-  private def isApproved(req: OauthRequest) = {
-    req.param(UserApproval.Allow).exists(_ == UserApproval.AllowValue) ||
-      req.param(UserApproval.AutoApproveKey).exists(_ == "true")
+  private def isApproved(req: OauthRequest, client: Oauth2Client) = {
+    if (req.param(UserApproval.AutoApproveKey).exists(_ == "true") && !client.autoapprove) {
+      throw new IllegalStateException("Most probably a hand crafted autoapprove URL. Autoapprove req param was true but the client setting is false.")
+    }
+    val autoApprove = (req.param(UserApproval.AutoApproveKey).exists(_ == "true") && client.autoapprove)
+    req.param(UserApproval.Allow).exists(_ == UserApproval.AllowValue) || autoApprove
   }
 
   import scala.collection.immutable.ListMap
