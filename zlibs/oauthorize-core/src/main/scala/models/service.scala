@@ -58,7 +58,7 @@ trait DefaultAuthzCodeGenerator extends AuthzCodeGenerator {
   this: ClientSecretHasher =>
   override def generateCode(authzRequest: AuthzRequest) = newToken
   override def generateAccessToken(oauthClient: Oauth2Client, authScope: Seq[String], userId: Option[UserId]) = AccessToken(newToken, oauthClient.clientId, authScope, oauthClient.accessTokenValidity, System.currentTimeMillis, userId)
-  override def generateRefreshToken(oauthClient: Oauth2Client, tokenScope: Seq[String], userId: Option[UserId]) = RefreshToken(newToken, oauthClient.clientId, tokenScope, oauthClient.refreshtokenValidity, System.currentTimeMillis, userId)
+  override def generateRefreshToken(oauthClient: Oauth2Client, tokenScope: Seq[String], userId: Option[UserId]) = RefreshToken(newToken, oauthClient.clientId, tokenScope, oauthClient.refreshTokenValidity, System.currentTimeMillis, userId)
   def newToken = hashClientSecret(SecretInfo(UUID.randomUUID().toString)).secret
 }
 
