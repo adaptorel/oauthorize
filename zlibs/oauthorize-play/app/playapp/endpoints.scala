@@ -98,13 +98,17 @@ trait UserApprovalPlay extends Oauth2BodyReaderFilter with UserApproval with Ren
     processApprove(a, u)
   }
 
+  def buildUserApprovalPage(authzReq: AuthzRequest, authzRequestJsonString: String, client: Oauth2Client): SimpleResult = {
+    Ok(views.html.oauthz.user_approval(authzReq, authzRequestJsonString, client))
+  }
+  
   private def displayUserApprovalPage(a: OauthRequest): SimpleResult = {
     (for {
       authzRequestJsonString <- a.param(UserApproval.AuthzRequestKey)
       authzReq <- unmarshal(authzRequestJsonString)
       client <- getClient(authzReq.clientId)
     } yield {
-      Ok(views.html.oauthz.user_approval(authzReq, authzRequestJsonString, client))
+      buildUserApprovalPage(authzReq, authzRequestJsonString, client)
     }) getOrElse ({
       logError("Fatal error when initiating user approval after user authentication! The authorization code, authorization request or the client weren't found. Shouldn't have got here EVER, we're controlling the whole flow!")
       err(server_error, 500)
