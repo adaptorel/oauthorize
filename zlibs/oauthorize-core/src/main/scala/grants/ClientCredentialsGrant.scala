@@ -16,8 +16,7 @@ trait ClientCredentialsGrant extends Dispatcher {
   override def matches(r: OauthRequest) = {
     val accepts = r.path == accessTokenEndpoint &&
       r.method == "POST" &&
-      r.param(Req.grant_type)
-      .exists(_ == GrantTypes.client_credentials)
+      r.param(Req.grant_type).exists(_ == GrantTypes.client_credentials)
     accepts
   }
 

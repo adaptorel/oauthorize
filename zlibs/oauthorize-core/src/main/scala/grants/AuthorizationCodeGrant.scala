@@ -16,17 +16,18 @@ trait AuthorizationCode extends Dispatcher {
   override def matches(r: OauthRequest) = {
     val res = r.path == authorizeEndpoint &&
       r.method == "GET" &&
-      r.param(Req.response_type).map(_ == ResponseType.code).getOrElse(false)
+      r.param(Req.response_type).exists(_ == ResponseType.code)
     res
   }
 
   def processAuthorizeRequest(req: OauthRequest): Future[Either[Err, OauthResponse]] = Future {
-    (req.param(client_id), req.param(response_type), req.param(redirect_uri), req.param(scope)) match {
-      case (Some(clientId), Some(responseType), Some(redirectUri), Some(authzScope)) => {
+    (req.param(client_id), req.param(response_type), req.param(redirect_uri)) match {
+      case (Some(clientId), Some(responseType), Some(redirectUri)) => {
         getClient(clientId) match {
           case None => Left(err(invalid_request, "unregistered client"))
           case Some(client) => {
-            val authzRequest = AuthzRequest(clientId, responseType, redirectUri, authzScope.split(ScopeSeparator).toSeq, client.autoapprove, req.param(state))
+            val scopes = req.param(scope).map(_.split(ScopeSeparator).toSeq).getOrElse(Seq())
+            val authzRequest = AuthzRequest(clientId, responseType, redirectUri, scopes, client.autoapprove, req.param(state))
             authzRequest.getError(client) match {
               case Some(err) => Left(err)
               case None => Right(InitiateAuthzApproval(authzRequest, client))

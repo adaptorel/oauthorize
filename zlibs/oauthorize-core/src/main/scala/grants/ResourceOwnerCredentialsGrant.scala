@@ -16,8 +16,7 @@ trait ResourceOwnerCredentialsGrant extends Dispatcher {
   override def matches(r: OauthRequest) = {
     val res = r.path == accessTokenEndpoint &&
       r.method == "POST" &&
-      r.param(Req.grant_type)
-      .map(v => v == GrantTypes.password).getOrElse(false)
+      r.param(Req.grant_type).exists(_ == GrantTypes.password)
     res
   }
 
