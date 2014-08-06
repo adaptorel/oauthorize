@@ -17,7 +17,7 @@ trait ClientCredentialsGrant extends Dispatcher {
     val accepts = r.path == accessTokenEndpoint &&
       r.method == "POST" &&
       r.param(Req.grant_type)
-      .map(v => v == GrantTypes.client_credentials).getOrElse(false)
+      .exists(_ == GrantTypes.client_credentials)
     accepts
   }
 
@@ -26,7 +26,7 @@ trait ClientCredentialsGrant extends Dispatcher {
     clientAuth match {
       case None => Left(err(unauthorized_client, "unauthorized client", StatusCodes.Unauthorized))
       case Some(basicAuth) => getClient(basicAuth.clientId) match {
-        case None => Left(err(invalid_client, s"unregistered client ${basicAuth.clientId}", StatusCodes.Unauthorized))
+        case None => Left(err(invalid_client, s"unregistered client", StatusCodes.Unauthorized))
         case Some(client) if (!clientSecretMatches(basicAuth.clientSecret, client.secretInfo)) => Left(err(invalid_client, "bad credentials", StatusCodes.Unauthorized))
         case Some(client) => {
           (req.param(grant_type)) match {
@@ -45,12 +45,18 @@ trait ClientCredentialsGrant extends Dispatcher {
     ccReq.getError() match {
       case Some(error) => Left(error)
       case None => {
-        val accessToken = generateAccessToken(ccReq.client, ccReq.scope.map(_.split(ScopeSeparator).toSeq).getOrElse(Seq()), None)//no user for c_c
+        val scopes = ccReq.scope.map(_.split(ScopeSeparator).toSeq).getOrElse(Seq())
+        val accessToken = generateAccessToken(ccReq.client, scopes, None) //no user for c_c
         val refreshToken = if (ccReq.client.authorizedGrantTypes.contains(GrantTypes.refresh_token)) {
-          Some(generateRefreshToken(ccReq.client, Seq[String](), None))
+          Some(generateRefreshToken(ccReq.client, scopes, None))
         } else None
         val stored = storeTokens(AccessAndRefreshTokens(accessToken, refreshToken), ccReq.client)
-        val response = AccessTokenResponse(stored.accessToken.value, stored.refreshToken.map(_.value), TokenType.bearer, stored.accessToken.validity, ccReq.scope.getOrElse(""))
+        val response = AccessTokenResponse(
+          stored.accessToken.value,
+          stored.refreshToken.map(_.value),
+          TokenType.bearer,
+          stored.accessToken.validity,
+          scopes.mkString(ScopeSeparator))
         Right(response)
       }
     }
