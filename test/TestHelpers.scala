@@ -46,7 +46,11 @@ trait TestHelpers {
   
   def encrypt(pass: String) = Oauth.hashClientSecret(SecretInfo(pass))
   
-  def authenticatedCookie = Authenticator.create(TestUser).fold(z => "", c => Cookies.encode(Seq(c.toCookie)))
+  def authenticatedCookie = Authenticator.create(TestUser).fold(z => throw new RuntimeException, c => Cookies.encode(Seq(c.toCookie)))
+  
+  def FakeLoginApp = FakeApplication(
+      withoutPlugins = Seq("securesocial.core.DefaultAuthenticatorStore"),
+      additionalPlugins = Seq("oauthorize.test.FakeLoggedInUserAuthenticatorStore"))
   
   lazy val TestUser = securesocial.core.SocialUser(
     IdentityId("user@test.com", "userpass"),

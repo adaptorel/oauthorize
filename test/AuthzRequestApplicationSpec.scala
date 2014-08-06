@@ -40,9 +40,18 @@ class AuthzRequestApplicationSpec extends PlaySpecification with TestHelpers {
       (resp.json \ "error") must equalTo(JsString(invalid_request))
       (resp.json \ "error_description") must equalTo(JsString(s"missmatched: $redirect_uri"))
     }
+    
+    "respond with 400 if incorrect scope" in new WithServer(port = 3333) {
+      val client = Oauth2Client("a", SecretInfo("a"), Seq("internal"), Seq("authorization_code"), RedirectUri, Seq(), 3600, 3600, None, true)
+      Oauth.storeClient(client)
+      val resp = await(WS.url(s"$TestUri/oauth/authorize?client_id=a&response_type=code&scope=broken&redirect_uri=$RedirectUri").get)
+      resp.status must equalTo(400)
+      (resp.json \ "error") must equalTo(JsString(invalid_scope))
+      (resp.json \ "error_description") must equalTo(JsString("unsupported scope"))
+    }
 
-    "send 302 if response_type is correct" in new WithServer(port = 3333) {
-      val authzCode = AuthzHelper.authorize
+    "send 302 if response_type is correct" in new WithServer(port = 3333, app = FakeLoginApp) {
+      val authzCode = AuthzHelper.authorizationRequest
       URLDecoder.decode(authzCode, "utf-8") must beMatching(".{53}")
     }
 
@@ -68,7 +77,7 @@ class AuthzRequestApplicationSpec extends PlaySpecification with TestHelpers {
 }
 
 object AuthzHelper extends TestHelpers {
-  def authorize(): String = {
+  def authorizationRequest(): String = {
     import oauth2.spec.AccessTokenResponseParams._
     Oauth.storeClient(Oauth2Client("the_client", encrypt("pass"), Seq("global"), Seq(GrantTypes.authorization_code, refresh_token), RedirectUri, Seq(), 3600, 3600, None, true))
     val authzResp = await(WS.url(s"$TestUri/oauth/authorize?client_id=the_client&response_type=code&state=555&scope=global&redirect_uri=$RedirectUri")

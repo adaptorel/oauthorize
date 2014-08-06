@@ -32,7 +32,7 @@ trait ClientCredentialsGrant extends Dispatcher {
           (req.param(grant_type)) match {
             case (Some(grantType)) => {
               val ccReq = ClientCredentialsRequest(client, req.param(scope))
-              processClientCredentialsRequest(ccReq)
+              processClientCredentialsRequest(ccReq, client)
             } case _ => Left(err(invalid_request, s"mandatory: $grant_type"))
           }
         }
@@ -40,12 +40,12 @@ trait ClientCredentialsGrant extends Dispatcher {
     }
   }
 
-  private def processClientCredentialsRequest(ccReq: ClientCredentialsRequest): Either[Err, AccessTokenResponse] = {
+  private def processClientCredentialsRequest(ccReq: ClientCredentialsRequest, client: Oauth2Client): Either[Err, AccessTokenResponse] = {
     import oauth2.spec.AccessTokenErrors._
-    ccReq.getError() match {
+    ccReq.getError(client) match {
       case Some(error) => Left(error)
       case None => {
-        val scopes = ccReq.scope.map(_.split(ScopeSeparator).toSeq).getOrElse(Seq())
+        val scopes = ccReq.authScope.map(_.split(ScopeSeparator).toSeq).getOrElse(Seq())
         val accessToken = generateAccessToken(ccReq.client, scopes, None) //no user for c_c
         val refreshToken = if (ccReq.client.authorizedGrantTypes.contains(GrantTypes.refresh_token)) {
           Some(generateRefreshToken(ccReq.client, scopes, None))

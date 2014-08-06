@@ -53,7 +53,7 @@ class ResourceOwnerCredentialsApplicationSpec extends PlaySpecification with Tes
       (resp.json \ "error") must equalTo(JsString(invalid_request))
       (resp.json \ "error_description") must equalTo(JsString(s"mandatory: $grant_type, $username, $password, $scope"))
     }
-
+    
     s"send 401 if unregistered client" in new WithServer(port = 3333) {
       val resp = postfWoRegisteredClient("/oauth/token", grant_type -> GrantTypes.password, username -> "whatever", password -> "whatever")
       resp.status must equalTo(401)
@@ -76,6 +76,15 @@ class ResourceOwnerCredentialsApplicationSpec extends PlaySpecification with Tes
       (resp.json \ "error") must equalTo(JsString(unsupported_grant_type))
       (resp.json \ "error_description") must equalTo(JsString("unsupported grant type"))
     }
+    
+    s"send 400 if incorrect scope" in new WithServer(port = 3333) {
+      val client = Some(Oauth2Client("the_client", Oauth.hashClientSecret(SecretInfo("pass")), Seq("global"), Seq(GrantTypes.password, GrantTypes.refresh_token), RedirectUri, Seq(), 3600, 3600, None, false))
+      UserService.save(TestUser)
+      val resp = postf("/oauth/token", grant_type -> GrantTypes.password, username -> "user@test.com", password -> "pass", "scope" -> "badscope")(client)
+      resp.status must equalTo(400)
+      (resp.json \ "error") must equalTo(JsString(invalid_scope))
+      (resp.json \ "error_description") must equalTo(JsString("unsupported scope"))
+    }    
 
     s"send 200 if request is correct" in new WithServer(port = 3333) {
       import oauth2.spec.AccessTokenResponseParams._

@@ -39,6 +39,17 @@ class ClientCredentialsApplicationSpec extends PlaySpecification with TestHelper
       (resp.json \ "error_description") must equalTo(JsString("bad credentials"))
     }
 
+    "respond with 400 if incorrect scope" in new WithServer(port = 3333) {
+      import oauth2.spec.AccessTokenResponseParams._
+      val c = Oauth.storeClient(Oauth2Client("the_client", encrypt("pass"),
+        Seq("global"), Seq(GrantTypes.client_credentials, GrantTypes.refresh_token),
+        RedirectUri, Seq(), 3600, 3600, None, true))
+      val resp = postf("/oauth/token", grant_type -> GrantTypes.client_credentials, "scope" -> "nonexistent")(Some(c))
+      resp.status must equalTo(400)
+      (resp.json \ "error") must equalTo(JsString(invalid_scope))
+      (resp.json \ "error_description") must equalTo(JsString("unsupported scope"))
+    }
+    
     "respond with 200 and the access token if request is correct" in new WithServer(port = 3333) {
       import oauth2.spec.AccessTokenResponseParams._
       val c = Oauth.storeClient(Oauth2Client("the_client", encrypt("pass"),

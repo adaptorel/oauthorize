@@ -1,7 +1,6 @@
 package oauthorize
 
 import oauthorize.model.ClientAuthentication
-import oauthorize.model.ClientAuthentication
 
 object utils {
 

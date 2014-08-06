@@ -19,11 +19,15 @@ object ValidationUtils {
     }
   }
 
-  def errForScope(authScope: Seq[String])(implicit client: Oauth2Client) = {
-    import oauth2.spec.AuthzErrors.invalid_request
+  def errForScope(authScope: Seq[String])(implicit client: Oauth2Client): Option[Err] = {
+    import oauth2.spec.AuthzErrors.{ invalid_request, invalid_scope }
     errForEmpty(authScope, err(invalid_request, s"mandatory: $scope")) orElse {
-      if (authScope.foldLeft(false)((acc, current) => acc || !client.scope.contains(current))) Some(err(invalid_request, s"unsupported scope")) else None
+      if (client.invalidScopes(authScope)) Some(err(invalid_scope, "unsupported scope")) else None
     }
+  }
+  
+  def errForScope(authScope: Option[String])(implicit client: Oauth2Client): Option[Err] = {
+    errForScope(authScope.map(_.split(ScopeSeparator).toSeq).getOrElse(Seq()))
   }
 
   def errForGrantType(grantType: String, client: Oauth2Client) = {
@@ -145,5 +149,5 @@ trait ResourceOwnerCredentialsRequestValidation {
 
 trait ClientCredentialsRequestValidation {
   this: ClientCredentialsRequest =>
-  def getError(): Option[Err] = None
+  def getError(implicit client: Oauth2Client): Option[Err] = errForScope(authScope)
 }

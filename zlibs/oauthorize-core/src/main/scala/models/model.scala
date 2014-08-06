@@ -7,7 +7,7 @@ import types._
 case class AuthzRequest(clientId: String, responseType: ResponseType, redirectUri: String, authScope: Seq[String], approved: Boolean, state: Option[State] = None, user: Option[Oauth2User] = None) extends AuthzRequestValidation
 case class AccessTokenRequest(grantType: GrantType, authzCode: String, redirectUri: String, clientId: Option[String]) extends AccessTokenRequestValidation
 case class RefreshTokenRequest(grantType: GrantType, refreshToken: String) extends RefreshTokenRequestValidation
-case class ClientCredentialsRequest(client: Oauth2Client, scope: Option[String]) extends ClientCredentialsRequestValidation
+case class ClientCredentialsRequest(client: Oauth2Client, authScope: Option[String]) extends ClientCredentialsRequestValidation
 case class ResourceOwnerCredentialsRequest(grantType: GrantType, username: String, password: String, authScope: Seq[String]) extends ResourceOwnerCredentialsRequestValidation
 
 abstract class Token {
@@ -42,7 +42,10 @@ case class Err(error: String, error_description: Option[String] = None, error_ur
 
 case class Oauth2Client(clientId: String, secretInfo: SecretInfo, scope: Seq[String] = Seq(), authorizedGrantTypes: Seq[String] = Seq(),
   redirectUri: String, authorities: Seq[String] = Seq(), accessTokenValidity: Long = 3600, refreshTokenValidity: Long = 604800,
-  additionalInfo: Option[String], autoapprove: Boolean = false)
+  additionalInfo: Option[String], autoapprove: Boolean = false) {
+  def invalidScopes(sc: Option[String]): Boolean = sc.exists(v => invalidScopes(v.split(" ")))
+  def invalidScopes(sc: Seq[String]): Boolean = sc.foldLeft(false) { (acc, curr) => acc || !scope.contains(curr) }
+}
 
 case class UserId(value: String, provider: Option[String])
 case class SecretInfo(secret: String, salt: Option[String] = None)

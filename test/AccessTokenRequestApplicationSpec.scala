@@ -39,13 +39,9 @@ class AccessTokenRequestApplicationSpec extends PlaySpecification with TestHelpe
       (resp.json \ "error_description") must equalTo(JsString("bad credentials"))
     }
 
-    val testApp = FakeApplication(
-      withoutPlugins = Seq("securesocial.core.DefaultAuthenticatorStore"),
-      additionalPlugins = Seq("oauthorize.test.FakeLoggedInUserAuthenticatorStore"))
-
-    "respond with 200 and the access token if request is correct" in new WithServer(port = 3333) {
+    "respond with 200 and the access token if request is correct" in new WithServer(port = 3333, app = FakeLoginApp) {
       import oauth2.spec.AccessTokenResponseParams._
-      val authzCode = AuthzHelper.authorize
+      val authzCode = AuthzHelper.authorizationRequest
       val accessResp = postf1("/oauth/token", code -> URLDecoder.decode(authzCode, "utf8"), grant_type -> GrantTypes.authorization_code, redirect_uri -> RedirectUri)
       accessResp.status must equalTo(200)
       (accessResp.json \ access_token).as[String] must beMatching(".{53}")
@@ -55,9 +51,9 @@ class AccessTokenRequestApplicationSpec extends PlaySpecification with TestHelpe
       (accessResp.json \ expires_in).as[Int] must beGreaterThan(0)
     }
 
-    s"accept client credentials as POST body" in new WithServer(port = 3333, app = testApp) {
+    s"accept client credentials as POST body" in new WithServer(port = 3333, app = FakeLoginApp) {
       import oauth2.spec.AccessTokenResponseParams._
-      val authzCode = AuthzHelper.authorize
+      val authzCode = AuthzHelper.authorizationRequest
       val accessResp = postfWoBasicAuth("/oauth/token", client_id -> "the_client", client_secret -> "pass", code -> URLDecoder.decode(authzCode, "utf8"), grant_type -> GrantTypes.authorization_code, redirect_uri -> RedirectUri)
       accessResp.status must equalTo(200)
       (accessResp.json \ access_token).as[String] must beMatching(".{53}")
