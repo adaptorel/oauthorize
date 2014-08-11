@@ -41,7 +41,7 @@ class ClientCredentialsApplicationSpec extends PlaySpecification with TestHelper
 
     "respond with 400 if incorrect scope" in new WithServer(port = 3333) {
       import oauth2.spec.AccessTokenResponseParams._
-      val c = Oauth.storeClient(Oauth2Client("the_client", encrypt("pass"),
+      val c = Oauth.storeClient(Oauth2Client("the_client", hash("pass"),
         Seq("global"), Seq(GrantTypes.client_credentials, GrantTypes.refresh_token),
         RedirectUri, Seq(), 3600, 3600, None, true))
       val resp = postf("/oauth/token", grant_type -> GrantTypes.client_credentials, "scope" -> "nonexistent")(Some(c))
@@ -52,7 +52,7 @@ class ClientCredentialsApplicationSpec extends PlaySpecification with TestHelper
     
     "respond with 200 and the access token if request is correct" in new WithServer(port = 3333) {
       import oauth2.spec.AccessTokenResponseParams._
-      val c = Oauth.storeClient(Oauth2Client("the_client", encrypt("pass"),
+      val c = Oauth.storeClient(Oauth2Client("the_client", hash("pass"),
         Seq("global"), Seq(GrantTypes.client_credentials, GrantTypes.refresh_token),
         RedirectUri, Seq(), 3600, 3600, None, true))
       val resp = postf("/oauth/token", grant_type -> GrantTypes.client_credentials, "scope" -> "global")(Some(c))
@@ -66,7 +66,7 @@ class ClientCredentialsApplicationSpec extends PlaySpecification with TestHelper
 
     "respond with 200 and correct access token to refresh token created by client_credentials" in new WithServer(port = 3333) {
       import oauth2.spec.AccessTokenResponseParams._
-      val c = Oauth.storeClient(Oauth2Client("the_client", encrypt("pass"),
+      val c = Oauth.storeClient(Oauth2Client("the_client", hash("pass"),
         Seq("global"), Seq(GrantTypes.client_credentials, GrantTypes.refresh_token),
         RedirectUri, Seq(), 3600, 3600, None, true))
       val resp = postf("/oauth/token", grant_type -> GrantTypes.client_credentials, "scope" -> "global")(Some(c))

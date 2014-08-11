@@ -16,7 +16,7 @@
   </appender>
   
   <logger name="play" level="WARN" />
-  <logger name="application" level="ERROR" />
+  <logger name="application" level="WARN" />
   <logger name="oauthorize" level="WARN" />
   
   <!-- Off these ones as they are annoying, and anyway we manage configuration ourself -->

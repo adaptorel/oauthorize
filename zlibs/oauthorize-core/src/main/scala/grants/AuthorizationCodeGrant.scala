@@ -27,7 +27,7 @@ trait AuthorizationCode extends Dispatcher {
           case None => Left(err(invalid_request, "unregistered client"))
           case Some(client) => {
             val scopes = req.param(scope).map(_.split(ScopeSeparator).toSeq).getOrElse(Seq())
-            val authzRequest = AuthzRequest(clientId, responseType, redirectUri, scopes, client.autoapprove, req.param(state))
+            val authzRequest = AuthzRequest(None, clientId, responseType, redirectUri, scopes, client.autoapprove, authzCodeValiditySeconds, System.currentTimeMillis, req.param(state))
             authzRequest.getError(client) match {
               case Some(err) => Left(err)
               case None => Right(InitiateAuthzApproval(authzRequest, client))

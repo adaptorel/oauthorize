@@ -1,7 +1,8 @@
 package oauthorize.playapp.grants
 
 import oauth2.spec.AuthzErrors
-import oauthorize.model.{OauthRequest, Logging, Dispatcher}
+import oauthorize.model.OauthRequest
+import oauthorize.service.{Logging, Dispatcher}
 import play.api.libs.json.Json
 import play.api.mvc._
 

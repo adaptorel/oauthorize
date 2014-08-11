@@ -40,11 +40,11 @@ trait TestHelpers {
 
   def postf(url: String, content: (String, String)*)(client: Option[Oauth2Client] = None): Response = {
     val urlEncoded = content.map(pair => URLEncoder.encode(pair._1, "utf-8") + "=" + URLEncoder.encode(pair._2, "utf-8")).mkString("&")
-    Oauth.storeClient(client.getOrElse(Oauth2Client("the_client", encrypt("pass"), Seq("global"), Seq(GrantTypes.authorization_code, GrantTypes.refresh_token), RedirectUri, Seq(), 3600, 3600, None, true)))
+    Oauth.storeClient(client.getOrElse(Oauth2Client("the_client", hash("pass"), Seq("global"), Seq(GrantTypes.authorization_code, GrantTypes.refresh_token), RedirectUri, Seq(), 3600, 3600, None, true)))
     await(WS.url(s"$TestUri$url").withAuth("the_client", "pass", Realm.AuthScheme.BASIC).withHeaders("Content-Type" -> "application/x-www-form-urlencoded; charset=utf-8").post(urlEncoded))
   }
   
-  def encrypt(pass: String) = Oauth.hashClientSecret(SecretInfo(pass))
+  def hash(pass: String) = Oauth.hashClientSecret(SecretInfo(pass))
   
   def authenticatedCookie = Authenticator.create(TestUser).fold(z => throw new RuntimeException, c => Cookies.encode(Seq(c.toCookie)))
   
@@ -52,7 +52,8 @@ trait TestHelpers {
       withoutPlugins = Seq("securesocial.core.DefaultAuthenticatorStore"),
       additionalPlugins = Seq("oauthorize.test.FakeLoggedInUserAuthenticatorStore"))
   
-  lazy val TestUser = securesocial.core.SocialUser(
+  lazy val TestUser = {
+    val u = securesocial.core.SocialUser(
     IdentityId("user@test.com", "userpass"),
     "Test",
     "User",
@@ -63,6 +64,9 @@ trait TestHelpers {
     None,
     None,
     Some(Registry.hashers.get("bcrypt").get.hash("pass")))
+    UserService.save(u)
+    u
+  }
 }
 
 import play.api.Application

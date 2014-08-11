@@ -39,22 +39,37 @@ class AccessTokenRequestApplicationSpec extends PlaySpecification with TestHelpe
       (resp.json \ "error_description") must equalTo(JsString("bad credentials"))
     }
 
+    "respond with 400 if authorization code expired" in new WithServer(port = 3333, app = FakeLoginApp) {
+      import oauth2.spec.AccessTokenResponseParams._
+      val authzCode = "31233123123123"
+      val authzRequest = AuthzRequest(Some(authzCode), "WEB_APP", "", RedirectUri, Seq("internal"), true, 1, System.currentTimeMillis, None, None)  
+      Oauth.storeAuthzRequest(authzCode, authzRequest)
+      Thread.sleep(1001)
+      val resp = postf1("/oauth/token", code -> authzCode, grant_type -> GrantTypes.authorization_code, redirect_uri -> RedirectUri)
+      resp.status must equalTo(400)
+      (resp.json \ "error") must equalTo(JsString(invalid_request))
+      (resp.json \ "error_description") must equalTo(JsString("expired authorization code"))
+    }    
+    
     "respond with 200 and the access token if request is correct" in new WithServer(port = 3333, app = FakeLoginApp) {
       import oauth2.spec.AccessTokenResponseParams._
-      val authzCode = AuthzHelper.authorizationRequest
-      val accessResp = postf1("/oauth/token", code -> URLDecoder.decode(authzCode, "utf8"), grant_type -> GrantTypes.authorization_code, redirect_uri -> RedirectUri)
+      val authzCode = URLDecoder.decode(AuthzHelper.authorizationRequest, "utf8")
+      Oauth.getAuthzRequest(authzCode) must beSome
+      Oauth.getAuthzRequest(authzCode).get.code must beSome(authzCode)
+      val accessResp = postf1("/oauth/token", code -> authzCode, grant_type -> GrantTypes.authorization_code, redirect_uri -> RedirectUri)
       accessResp.status must equalTo(200)
       (accessResp.json \ access_token).as[String] must beMatching(".{53}")
       (accessResp.json \ refresh_token).as[String] must beMatching(".{53}")
       (accessResp.json \ token_type).as[String] must equalTo("bearer")
       (accessResp.json \ scope).as[String] must equalTo("global")
       (accessResp.json \ expires_in).as[Int] must beGreaterThan(0)
+      Oauth.getAuthzRequest(authzCode) must beNone
     }
 
     s"accept client credentials as POST body" in new WithServer(port = 3333, app = FakeLoginApp) {
       import oauth2.spec.AccessTokenResponseParams._
-      val authzCode = AuthzHelper.authorizationRequest
-      val accessResp = postfWoBasicAuth("/oauth/token", client_id -> "the_client", client_secret -> "pass", code -> URLDecoder.decode(authzCode, "utf8"), grant_type -> GrantTypes.authorization_code, redirect_uri -> RedirectUri)
+      val authzCode = URLDecoder.decode(AuthzHelper.authorizationRequest, "utf8")
+      val accessResp = postfWoBasicAuth("/oauth/token", client_id -> "the_client", client_secret -> "pass", code -> authzCode, grant_type -> GrantTypes.authorization_code, redirect_uri -> RedirectUri)
       accessResp.status must equalTo(200)
       (accessResp.json \ access_token).as[String] must beMatching(".{53}")
       (accessResp.json \ refresh_token).as[String] must beMatching(".{53}")

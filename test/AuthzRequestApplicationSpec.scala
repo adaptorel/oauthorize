@@ -79,7 +79,7 @@ class AuthzRequestApplicationSpec extends PlaySpecification with TestHelpers {
 object AuthzHelper extends TestHelpers {
   def authorizationRequest(): String = {
     import oauth2.spec.AccessTokenResponseParams._
-    Oauth.storeClient(Oauth2Client("the_client", encrypt("pass"), Seq("global"), Seq(GrantTypes.authorization_code, refresh_token), RedirectUri, Seq(), 3600, 3600, None, true))
+    Oauth.storeClient(Oauth2Client("the_client", hash("pass"), Seq("global"), Seq(GrantTypes.authorization_code, refresh_token), RedirectUri, Seq(), 3600, 3600, None, true))
     val authzResp = await(WS.url(s"$TestUri/oauth/authorize?client_id=the_client&response_type=code&state=555&scope=global&redirect_uri=$RedirectUri")
       .withHeaders("Cookie" -> authenticatedCookie)
       .withFollowRedirects(true).get)

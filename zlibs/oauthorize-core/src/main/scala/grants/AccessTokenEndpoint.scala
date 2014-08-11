@@ -44,7 +44,9 @@ trait AccessTokenEndpoint extends Dispatcher {
 
     getAuthzRequest(accessTokenRequest.authzCode) match {
       case None => Left(err(invalid_request, "invalid authorization code"))
+      case Some(authzRequest) if (authzRequest.isExpired) => Left(err(invalid_request, "expired authorization code"))
       case Some(authzRequest) => {
+        markForRemoval(authzRequest, Option(accessTokenRequest.authzCode))
         accessTokenRequest.getError(authzRequest, oauthClient) match {
           case Some(error) => Left(error)
           case None => {

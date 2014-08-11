@@ -19,32 +19,32 @@ class AuthzRequestSpec extends Specification {
     implicit val client = Oauth2Client("a", SecretInfo("a"), CorrectScope, Seq("authorization_code"), Redir, Seq(), 3600, 3600, None, true)
     
     s"contain a valid $client_id request param" in {
-      AuthzRequest(null, null, Redir, CorrectScope, true).getError.map(_.error) must beSome(invalid_request)
-      AuthzRequest(null, null, Redir, CorrectScope, true).getError.map(_.error_description).get must beSome(s"mandatory: $client_id")
-      AuthzRequest("a", ResponseType.code, Redir, CorrectScope, true).getError must beNone
+      AuthzRequest(None, null, null, Redir, CorrectScope, true, 60, System.currentTimeMillis).getError.map(_.error) must beSome(invalid_request)
+      AuthzRequest(None, null, null, Redir, CorrectScope, true, 60, System.currentTimeMillis).getError.map(_.error_description).get must beSome(s"mandatory: $client_id")
+      AuthzRequest(None, "a", ResponseType.code, Redir, CorrectScope, true, 60, System.currentTimeMillis).getError must beNone
     }
 
     s"contain a valid $response_type request param" in {
-      AuthzRequest("a", null, Redir, CorrectScope, true).getError.map(_.error) must beSome(invalid_request)
-      AuthzRequest("a", null, Redir, CorrectScope, true).getError.map(_.error_description).get must beSome(s"mandatory: $response_type")
-      AuthzRequest("a", ResponseType.token, Redir, CorrectScope, true).getError must beNone
+      AuthzRequest(None, "a", null, Redir, CorrectScope, true, 60, System.currentTimeMillis).getError.map(_.error) must beSome(invalid_request)
+      AuthzRequest(None, "a", null, Redir, CorrectScope, true, 60, System.currentTimeMillis).getError.map(_.error_description).get must beSome(s"mandatory: $response_type")
+      AuthzRequest(None, "a", ResponseType.token, Redir, CorrectScope, true, 60, System.currentTimeMillis).getError must beNone
     }
     
     s"contain a valid redirect_uri request param" in {
-      AuthzRequest("a", ResponseType.token, null, CorrectScope, true).getError.map(_.error) must beSome(invalid_request)
-      AuthzRequest("a", ResponseType.token, null, CorrectScope, true).getError.map(_.error_description).get must beSome(s"mandatory: $redirect_uri")
-      AuthzRequest("a", ResponseType.token, Redir, CorrectScope, true).getError must beNone
+      AuthzRequest(None, "a", ResponseType.token, null, CorrectScope, true, 60, System.currentTimeMillis).getError.map(_.error) must beSome(invalid_request)
+      AuthzRequest(None, "a", ResponseType.token, null, CorrectScope, true, 60, System.currentTimeMillis).getError.map(_.error_description).get must beSome(s"mandatory: $redirect_uri")
+      AuthzRequest(None, "a", ResponseType.token, Redir, CorrectScope, true, 60, System.currentTimeMillis).getError must beNone
     }
     
     s"contain a valid scope request param" in {
-      AuthzRequest("a", ResponseType.code, Redir, Seq(), true).getError.map(_.error) must beSome(invalid_request)
-      AuthzRequest("a", ResponseType.code, Redir, Seq(), true).getError.map(_.error_description).get must beSome(s"mandatory: $scope")
-      AuthzRequest("a", ResponseType.code, Redir, CorrectScope, true).getError must beNone
+      AuthzRequest(None, "a", ResponseType.code, Redir, Seq(), true, 60, System.currentTimeMillis).getError.map(_.error) must beSome(invalid_request)
+      AuthzRequest(None, "a", ResponseType.code, Redir, Seq(), true, 60, System.currentTimeMillis).getError.map(_.error_description).get must beSome(s"mandatory: $scope")
+      AuthzRequest(None, "a", ResponseType.code, Redir, CorrectScope, true, 60, System.currentTimeMillis).getError must beNone
     }    
 
     s"contain a $response_type of type '${ResponseType.code}' or '${ResponseType.token}'" in {
-      AuthzRequest("a", "b", Redir, CorrectScope, true).getError.map(_.error) must beSome(invalid_request)
-      AuthzRequest("a", "b", Redir, CorrectScope, true).getError.map(_.error_description).get must beSome(s"mandatory: $response_type in ['${ResponseType.code}','${ResponseType.token}']")
+      AuthzRequest(None, "a", "b", Redir, CorrectScope, true, 60, System.currentTimeMillis).getError.map(_.error) must beSome(invalid_request)
+      AuthzRequest(None, "a", "b", Redir, CorrectScope, true, 60, System.currentTimeMillis).getError.map(_.error_description).get must beSome(s"mandatory: $response_type in ['${ResponseType.code}','${ResponseType.token}']")
     }
 
   }
