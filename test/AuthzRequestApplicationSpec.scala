@@ -23,8 +23,6 @@ import oauth2.spec.GrantTypes
 @RunWith(classOf[JUnitRunner])
 class AuthzRequestApplicationSpec extends PlaySpecification with TestHelpers {
 
-  import oauthorize.service.TenantImplicits._
-  
   "Application" should {
 
     s"send 400 if '$code' param is missing" in new WithServer(port = 3333) {
@@ -79,7 +77,6 @@ class AuthzRequestApplicationSpec extends PlaySpecification with TestHelpers {
 }
 
 object AuthzHelper extends TestHelpers {
-  import oauthorize.service.TenantImplicits._
   def authorizationRequest(): String = {
     import oauth2.spec.AccessTokenResponseParams._
     Oauth.storeClient(Oauth2Client("the_client", hash("pass"), Seq("global"), Seq(GrantTypes.authorization_code, refresh_token), RedirectUri, Seq(), 3600, 3600, None, true))

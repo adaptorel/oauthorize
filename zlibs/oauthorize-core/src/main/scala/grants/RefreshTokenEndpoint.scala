@@ -20,7 +20,7 @@ trait RefreshTokenEndpoint extends Dispatcher {
     res
   }
 
-  def processRefreshTokenRequest(req: OauthRequest, clientAuth: Option[ClientAuthentication])(implicit tenant: Tenant): Future[Either[Err, AccessTokenResponse]] = Future {
+  def processRefreshTokenRequest(req: OauthRequest, clientAuth: Option[ClientAuthentication]): Future[Either[Err, AccessTokenResponse]] = Future {
 
     clientAuth match {
       case None => Left(err(unauthorized_client, "unauthorized client", StatusCodes.Unauthorized))
@@ -39,7 +39,7 @@ trait RefreshTokenEndpoint extends Dispatcher {
     }
   }
 
-  private def processRefreshTokenRequest(refreshTokenRequest: RefreshTokenRequest, oauthClient: Oauth2Client)(implicit tenant: Tenant): Either[Err, AccessTokenResponse] = {
+  private def processRefreshTokenRequest(refreshTokenRequest: RefreshTokenRequest, oauthClient: Oauth2Client): Either[Err, AccessTokenResponse] = {
     import oauth2.spec.AccessTokenErrors._
 
     getRefreshToken(refreshTokenRequest.refreshToken) match {

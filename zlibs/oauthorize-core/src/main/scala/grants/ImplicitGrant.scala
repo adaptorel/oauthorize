@@ -23,7 +23,7 @@ trait ImplicitGrant extends Dispatcher {
     res
   }
 
-  def processImplicitRequest(req: OauthRequest, user: Oauth2User)(implicit tenant: Tenant): Either[Err, OauthResponse] = {
+  def processImplicitRequest(req: OauthRequest, user: Oauth2User): Either[Err, OauthResponse] = {
     (req.param(client_id), req.param(response_type), req.param(redirect_uri), req.param(scope)) match {
       case (Some(clientId), Some(responseType), Some(redirectUri), Some(authzScope)) => {
         getClient(clientId) match {

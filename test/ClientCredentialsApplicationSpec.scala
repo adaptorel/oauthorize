@@ -22,8 +22,6 @@ import play.api.libs.ws.WS.WSRequestHolder
 @RunWith(classOf[JUnitRunner])
 class ClientCredentialsApplicationSpec extends PlaySpecification with TestHelpers {
 
-  import oauthorize.service.TenantImplicits._
-  
   "Application" should {
 
     s"send 401 if unregistered client" in new WithServer(port = 3333) {

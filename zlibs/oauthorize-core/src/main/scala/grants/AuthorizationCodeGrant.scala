@@ -20,7 +20,7 @@ trait AuthorizationCode extends Dispatcher {
     res
   }
 
-  def processAuthorizeRequest(req: OauthRequest)(implicit tenant: Tenant): Future[Either[Err, OauthResponse]] = Future {
+  def processAuthorizeRequest(req: OauthRequest): Future[Either[Err, OauthResponse]] = Future {
     (req.param(client_id), req.param(response_type), req.param(redirect_uri)) match {
       case (Some(clientId), Some(responseType), Some(redirectUri)) => {
         getClient(clientId) match {

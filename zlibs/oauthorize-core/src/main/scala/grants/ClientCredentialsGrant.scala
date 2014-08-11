@@ -20,7 +20,7 @@ trait ClientCredentialsGrant extends Dispatcher {
     accepts
   }
 
-  def processClientCredentialsRequest(req: OauthRequest, clientAuth: Option[ClientAuthentication])(implicit tenant: Tenant): Future[Either[Err, AccessTokenResponse]] = Future {
+  def processClientCredentialsRequest(req: OauthRequest, clientAuth: Option[ClientAuthentication]): Future[Either[Err, AccessTokenResponse]] = Future {
 
     clientAuth match {
       case None => Left(err(unauthorized_client, "unauthorized client", StatusCodes.Unauthorized))
@@ -39,7 +39,7 @@ trait ClientCredentialsGrant extends Dispatcher {
     }
   }
 
-  private def processClientCredentialsRequest(ccReq: ClientCredentialsRequest, client: Oauth2Client)(implicit tenant: Tenant): Either[Err, AccessTokenResponse] = {
+  private def processClientCredentialsRequest(ccReq: ClientCredentialsRequest, client: Oauth2Client): Either[Err, AccessTokenResponse] = {
     import oauth2.spec.AccessTokenErrors._
     ccReq.getError(client) match {
       case Some(error) => Left(error)

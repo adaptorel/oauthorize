@@ -12,7 +12,6 @@ trait OauthMix extends Oauth2DefaultsPlay
   with DefaultAuthzCodeGenerator
   with BCryptClientSecretHasher
   with BCryptUserPasswordHasher
-  with DefaultTenantResolver
 
 object Oauth extends OauthMix
 

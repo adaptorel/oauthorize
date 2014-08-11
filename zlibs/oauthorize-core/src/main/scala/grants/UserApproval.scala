@@ -29,7 +29,7 @@ trait UserApproval extends Dispatcher {
     res
   }
 
-  def processApprove(req: OauthRequest, u: Oauth2User)(implicit tenant: Tenant): OauthRedirect = {
+  def processApprove(req: OauthRequest, u: Oauth2User): OauthRedirect = {
     (for {
       authzRequestJsonString <- req.param(UserApproval.AuthzRequestKey)
       authzReq <- unmarshal(authzRequestJsonString)
@@ -58,7 +58,7 @@ trait UserApproval extends Dispatcher {
   }
 
   import scala.collection.immutable.ListMap
-  private def renderImplicitResponse(req: OauthRequest, oauthClient: Oauth2Client, authzRequest: AuthzRequest, user: Oauth2User)(implicit tenant: Tenant) = {
+  private def renderImplicitResponse(req: OauthRequest, oauthClient: Oauth2Client, authzRequest: AuthzRequest, user: Oauth2User) = {
     import oauth2.spec.AccessTokenResponseParams._
     markForRemoval(authzRequest, None)// authz req not stored thus we have no code for implicit grant
     val token = generateAccessToken(oauthClient, authzRequest.authScope, Option(user.id))
@@ -72,7 +72,7 @@ trait UserApproval extends Dispatcher {
     OauthRedirect(oauthClient.redirectUri, params, true)
   }
 
-  private def renderAuthzResponse(authzRequest: AuthzRequest, client: Oauth2Client, req: OauthRequest, u: Oauth2User)(implicit tenant: Tenant) = {
+  private def renderAuthzResponse(authzRequest: AuthzRequest, client: Oauth2Client, req: OauthRequest, u: Oauth2User) = {
     val authzCode = generateCode(authzRequest)
     storeAuthzRequest(authzCode, authzRequest.copy(user = Option(u), code = Option(authzCode)))
     val tmp = Map(code -> authzCode)
