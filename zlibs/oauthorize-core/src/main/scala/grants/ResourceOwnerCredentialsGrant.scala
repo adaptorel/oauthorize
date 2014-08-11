@@ -20,7 +20,7 @@ trait ResourceOwnerCredentialsGrant extends Dispatcher {
     res
   }
 
-  def processOwnerCredentialsRequest(req: OauthRequest, clientAuth: Option[ClientAuthentication]): Future[Either[Err, AccessTokenResponse]] = Future {
+  def processOwnerCredentialsRequest(req: OauthRequest, clientAuth: Option[ClientAuthentication])(implicit tenant: Tenant): Future[Either[Err, AccessTokenResponse]] = Future {
 
     clientAuth match {
       case None => Left(err(unauthorized_client, "unauthorized client", StatusCodes.Unauthorized))
@@ -39,7 +39,7 @@ trait ResourceOwnerCredentialsGrant extends Dispatcher {
     }
   }
 
-  private def processOwnerCredentialsRequest(rq: ResourceOwnerCredentialsRequest, oauthClient: Oauth2Client): Either[Err, AccessTokenResponse] = {
+  private def processOwnerCredentialsRequest(rq: ResourceOwnerCredentialsRequest, oauthClient: Oauth2Client)(implicit tenant: Tenant): Either[Err, AccessTokenResponse] = {
     import oauth2.spec.AccessTokenErrors._
 
     rq.getError(oauthClient) match {
