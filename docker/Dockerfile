@@ -1,4 +1,4 @@
-from adaptorel/u14.04_play-2.2.3
+from adaptorel/u12.04_oracle-jdk-7_play-2.2.4
 
 RUN git clone https://github.com/adaptorel/oauthorize.git
 
