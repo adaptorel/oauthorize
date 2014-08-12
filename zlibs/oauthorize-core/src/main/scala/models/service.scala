@@ -24,14 +24,22 @@ trait BCryptClientSecretHasher extends ClientSecretHasher {
   override def clientSecretMatches(rawSecret: String, info: SecretInfo): Boolean = hasher.secretMatches(rawSecret, info)
 }
 
+trait Tenant {
+  def name: String
+}
+
+object TenantImplicits {
+  implicit val DefaultTenant = new Tenant { override val name = "__DEFAULT_TENANT__" }
+}
+
 trait Oauth2Store {
-  def storeClient(client: Oauth2Client): Oauth2Client
-  def getClient(clientId: String): Option[Oauth2Client]
-  def storeAuthzRequest(authzCode: String, authzRequest: AuthzRequest): AuthzRequest
-  def getAuthzRequest(authzCode: String): Option[AuthzRequest]
-  def storeTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client): AccessAndRefreshTokens
-  def getAccessToken(value: String): Option[AccessToken]
-  def getRefreshToken(value: String): Option[RefreshToken]
+  def storeClient(client: Oauth2Client)(implicit tenant: Tenant): Oauth2Client
+  def getClient(clientId: String)(implicit tenant: Tenant): Option[Oauth2Client]
+  def storeAuthzRequest(authzCode: String, authzRequest: AuthzRequest)(implicit tenant: Tenant): AuthzRequest
+  def getAuthzRequest(authzCode: String)(implicit tenant: Tenant): Option[AuthzRequest]
+  def storeTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client)(implicit tenant: Tenant): AccessAndRefreshTokens
+  def getAccessToken(value: String)(implicit tenant: Tenant): Option[AccessToken]
+  def getRefreshToken(value: String)(implicit tenant: Tenant): Option[RefreshToken]
   def markForRemoval(item: Expirable, key: Option[String])
   def findAuthzRequestsToEvict(offset: Integer, howMany: Integer): Seq[AuthzRequest]
   def findAccessTokensToEvict(offset: Integer, howMany: Integer): Seq[AccessToken]
@@ -102,7 +110,7 @@ trait DefaultAuthzCodeGenerator extends AuthzCodeGenerator {
 
 trait DefaultEvictor extends Evictor {
   this: Oauth2Config with Oauth2Store with Logging =>
-    
+
   val batchSize = 100
   override def evictAuthzCodes(offset: Int): Int = {
     val items = findAuthzRequestsToEvict(offset, batchSize)
@@ -184,17 +192,17 @@ trait InMemoryStoreDelegate extends Oauth2Store {
   private val accessTokenStore = scala.collection.mutable.Map[String, AccessToken]()
   private val refreshTokenStore = scala.collection.mutable.Map[String, RefreshToken]()
 
-  override def storeClient(client: Oauth2Client) = { oauthClientStore.put(client.clientId, client); client }
-  override def getClient(clientId: String) = oauthClientStore.get(clientId)
-  override def storeAuthzRequest(authzCode: String, authzRequest: AuthzRequest) = { authzCodeStore.put(authzCode, authzRequest); authzRequest }
-  override def getAuthzRequest(authzCode: String) = authzCodeStore.get(authzCode)
-  override def storeTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client) = {
+  override def storeClient(client: Oauth2Client)(implicit tenant: Tenant) = { oauthClientStore.put(client.clientId, client); client }
+  override def getClient(clientId: String)(implicit tenant: Tenant) = oauthClientStore.get(clientId)
+  override def storeAuthzRequest(authzCode: String, authzRequest: AuthzRequest)(implicit tenant: Tenant) = { authzCodeStore.put(authzCode, authzRequest); authzRequest }
+  override def getAuthzRequest(authzCode: String)(implicit tenant: Tenant) = authzCodeStore.get(authzCode)
+  override def storeTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client)(implicit tenant: Tenant) = {
     accessTokenStore.put(accessAndRefreshTokens.accessToken.value, accessAndRefreshTokens.accessToken)
     accessAndRefreshTokens.refreshToken.foreach(t => refreshTokenStore.put(t.value, t))
     accessAndRefreshTokens
   }
-  override def getAccessToken(value: String) = accessTokenStore.find(t => t._1 == value).map(_._2)
-  override def getRefreshToken(value: String) = refreshTokenStore.find(t => t._1 == value).map(_._2)
+  override def getAccessToken(value: String)(implicit tenant: Tenant) = accessTokenStore.find(t => t._1 == value).map(_._2)
+  override def getRefreshToken(value: String)(implicit tenant: Tenant) = refreshTokenStore.find(t => t._1 == value).map(_._2)
   override def markForRemoval(item: Expirable, key: Option[String]) = {
     item match {
       case ar: AuthzRequest => key.foreach(authzCodeStore.remove(_))
@@ -212,13 +220,14 @@ private object DefaultInMemoryStoreDelegate extends InMemoryStoreDelegate
 
 trait InMemoryOauth2Store extends Oauth2Store {
   lazy val delegate: Oauth2Store = DefaultInMemoryStoreDelegate
-  override def storeClient(client: Oauth2Client) = delegate.storeClient(client)
-  override def getClient(clientId: String) = delegate.getClient(clientId)
-  override def storeAuthzRequest(authzCode: String, authzRequest: AuthzRequest) = delegate.storeAuthzRequest(authzCode, authzRequest)
-  override def getAuthzRequest(authzCode: String) = delegate.getAuthzRequest(authzCode)
-  override def storeTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client) = delegate.storeTokens(accessAndRefreshTokens, oauthClient)
-  override def getAccessToken(value: String) = delegate.getAccessToken(value)
-  override def getRefreshToken(value: String) = delegate.getRefreshToken(value)
+  import TenantImplicits.DefaultTenant
+  override def storeClient(client: Oauth2Client)(implicit tenant: Tenant) = delegate.storeClient(client)
+  override def getClient(clientId: String)(implicit tenant: Tenant) = delegate.getClient(clientId)
+  override def storeAuthzRequest(authzCode: String, authzRequest: AuthzRequest)(implicit tenant: Tenant) = delegate.storeAuthzRequest(authzCode, authzRequest)
+  override def getAuthzRequest(authzCode: String)(implicit tenant: Tenant) = delegate.getAuthzRequest(authzCode)
+  override def storeTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client)(implicit tenant: Tenant) = delegate.storeTokens(accessAndRefreshTokens, oauthClient)
+  override def getAccessToken(value: String)(implicit tenant: Tenant) = delegate.getAccessToken(value)
+  override def getRefreshToken(value: String)(implicit tenant: Tenant) = delegate.getRefreshToken(value)
   override def markForRemoval(item: Expirable, key: Option[String]) = delegate.markForRemoval(item, key)
   override def findAuthzRequestsToEvict(offset: Integer, howMany: Integer): Seq[AuthzRequest] = delegate.findAuthzRequestsToEvict(offset, howMany)
   override def findAccessTokensToEvict(offset: Integer, howMany: Integer): Seq[AccessToken] = delegate.findAccessTokensToEvict(offset, howMany)

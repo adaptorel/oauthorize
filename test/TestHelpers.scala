@@ -16,6 +16,8 @@ import play.api.mvc._
 
 trait TestHelpers {
 
+  import oauthorize.service.TenantImplicits._
+  
   val port = 3333
   val RedirectUri = s"http://localhost:$port/fake/cb"
   val TestUri = s"http://localhost:$port"

@@ -12,6 +12,8 @@ import oauthorize.model._
 @RunWith(classOf[JUnitRunner])
 class ZDefaultEvictorApplicationSpec extends PlaySpecification with TestHelpers {
 
+  import oauthorize.service.TenantImplicits._
+  
   lazy val evictor = new DefaultEvictor with Oauth2DefaultsPlay with InMemoryOauth2Store
 
   "Application" should {

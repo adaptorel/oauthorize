@@ -10,6 +10,14 @@ import json._
 import oauthorize.utils.BasicAuthentication
 import scala.concurrent.Future
 
+trait TenantResolver {
+  def resolveTenant(req: RequestHeader): Tenant
+}
+
+trait DefaultTenantResolver extends TenantResolver {
+  def resolveTenant(req: RequestHeader): Tenant = TenantImplicits.DefaultTenant
+}
+
 trait Oauth2RequestValidatorPlay extends Oauth2BodyReaderFilter with Oauth2RequestValidator with RenderingUtils {
   this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator =>
 
@@ -20,50 +28,50 @@ trait Oauth2RequestValidatorPlay extends Oauth2BodyReaderFilter with Oauth2Reque
 }
 
 trait AccessTokenEndpointPlay extends Oauth2BodyReaderFilter with AccessTokenEndpoint with RenderingUtils {
-  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with AuthzCodeGenerator =>
+  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with AuthzCodeGenerator with TenantResolver =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
-    Option(processAccessTokenRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
+    Option(processAccessTokenRequest(oauthRequest, BasicAuthentication(oauthRequest))(resolveTenant(req)).map(_.fold(err => err, correct => correct)))
   }
 }
 
 trait RefreshTokenEndpointPlay extends Oauth2BodyReaderFilter with RefreshTokenEndpoint with RenderingUtils {
-  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with AuthzCodeGenerator =>
+  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with AuthzCodeGenerator with TenantResolver =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
-    Option(processRefreshTokenRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
+    Option(processRefreshTokenRequest(oauthRequest, BasicAuthentication(oauthRequest))(resolveTenant(req)).map(_.fold(err => err, correct => correct)))
   }
 }
 
 trait ClientCredentialsGrantPlay extends Oauth2BodyReaderFilter with ClientCredentialsGrant with RenderingUtils {
-  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with AuthzCodeGenerator =>
+  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with AuthzCodeGenerator with TenantResolver =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
-    Option(processClientCredentialsRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
+    Option(processClientCredentialsRequest(oauthRequest, BasicAuthentication(oauthRequest))(resolveTenant(req)).map(_.fold(err => err, correct => correct)))
   }
 }
 
 trait AuthorizationCodePlay extends Oauth2BodyReaderFilter with AuthorizationCode with RenderingUtils {
-  this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator =>
+  this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator with TenantResolver =>
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
-    Option(processAuthorizeRequest(a).map(_.fold(err => err, good => good)))
+    Option(processAuthorizeRequest(a)(resolveTenant(req)).map(_.fold(err => err, good => good)))
   }
 }
 
 trait ResourceOwnerCredentialsGrantPlay extends Oauth2BodyReaderFilter with ResourceOwnerCredentialsGrant with RenderingUtils {
-  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with UserStore with UserPasswordHasher with AuthzCodeGenerator =>
+  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with UserStore with UserPasswordHasher with AuthzCodeGenerator with TenantResolver =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
-    Option(processOwnerCredentialsRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
+    Option(processOwnerCredentialsRequest(oauthRequest, BasicAuthentication(oauthRequest))(resolveTenant(req)).map(_.fold(err => err, correct => correct)))
   }
 }
 
 trait ImplicitGrantPlay extends Oauth2BodyReaderFilter with ImplicitGrant with RenderingUtils with securesocial.core.SecureSocial {
-  this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator =>
+  this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator with TenantResolver =>
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
-    def process(u: Oauth2User): SimpleResult = processImplicitRequest(a, u).fold(err => err, good => good)
+    def process(u: Oauth2User): SimpleResult = processImplicitRequest(a, u)(resolveTenant(req)).fold(err => err, good => good)
     Some(secureInvocation(process, req))
   }
 
@@ -74,7 +82,7 @@ trait ImplicitGrantPlay extends Oauth2BodyReaderFilter with ImplicitGrant with R
 }
 
 trait UserApprovalPlay extends Oauth2BodyReaderFilter with UserApproval with RenderingUtils with securesocial.core.SecureSocial {
-  this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator =>
+  this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator with TenantResolver =>
 
   import oauth2.spec.Req._
   import oauthorize.utils._
@@ -86,6 +94,7 @@ trait UserApprovalPlay extends Oauth2BodyReaderFilter with UserApproval with Ren
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
     logInfo(s"processing user approval: $a");
+    implicit val tenaant = resolveTenant(req)
     def lazyResult(u: Oauth2User) =
       if ("POST" == a.method || a.param(UserApproval.AutoApproveKey).exists(_ == "true"))
         lazyProcessApprove(a, u)
@@ -93,7 +102,7 @@ trait UserApprovalPlay extends Oauth2BodyReaderFilter with UserApproval with Ren
     Some(secureInvocation(lazyResult, req))
   }
 
-  private def lazyProcessApprove(a: OauthRequest, u: Oauth2User): SimpleResult = {
+  private def lazyProcessApprove(a: OauthRequest, u: Oauth2User)(implicit tenant: Tenant): SimpleResult = {
     processApprove(a, u)
   }
 
@@ -101,7 +110,7 @@ trait UserApprovalPlay extends Oauth2BodyReaderFilter with UserApproval with Ren
     Ok(views.html.oauthz.user_approval(authzReq, authzRequestJsonString, client))
   }
   
-  private def displayUserApprovalPage(a: OauthRequest, req: RequestHeader): SimpleResult = {
+  private def displayUserApprovalPage(a: OauthRequest, req: RequestHeader)(implicit tenant: Tenant): SimpleResult = {
     implicit val request = req
     (for {
       authzRequestJsonString <- a.param(UserApproval.AuthzRequestKey)

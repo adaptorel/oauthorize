@@ -24,6 +24,8 @@ import play.api.libs.ws.Response
 @RunWith(classOf[JUnitRunner])
 class RefreshTokenRequestApplicationSpec extends PlaySpecification with TestHelpers {
 
+  import oauthorize.service.TenantImplicits._
+  
   "Application" should {
 
     s"send 400 if '$refresh_token' param is missing" in new WithServer(port = 3333) {
