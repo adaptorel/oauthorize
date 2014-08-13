@@ -22,7 +22,7 @@ object ImplicitGrant extends ImplicitGrantPlay with OauthMix
 object ClientCredentialsGrant extends ClientCredentialsGrantPlay with OauthMix
 object AccessTokenEndpoint extends AccessTokenEndpointPlay with OauthMix
 object RefreshTokenEndpoint extends RefreshTokenEndpointPlay with OauthMix
-object ResourceOwnerCredentialsGrant extends ResourceOwnerCredentialsGrantPlay with OauthMix with SecureSocialUserStore 
+object ResourceOwnerCredentialsGrant extends ResourceOwnerCredentialsGrantPlay with OauthMix with SecureSocialUserStore
 object UserApprovalEndpoint extends UserApprovalPlay with OauthMix
 
 class Oauth2Filters extends WithFilters(
@@ -64,9 +64,16 @@ trait PlayLogging extends Logging {
 
 trait Oauth2DefaultsPlay extends Oauth2Defaults with PlayLogging with PlayExecutionContextProvider
 
+object SecureTenantImplicits {
+  import securesocial.core.SecureTenant
+  private def tenantToSecureTenant(tenant: Tenant): SecureTenant = new SecureTenant { override def name = tenant.name }
+  implicit val DefaultSecureTenant: SecureTenant = tenantToSecureTenant(TenantImplicits.DefaultTenant)
+}
+
 trait SecureSocialUserStore extends UserStore {
-  import securesocial.core._
-  override def getUser(id: UserId) = {
+  import securesocial.core.{ UserService, IdentityId }
+  import SecureTenantImplicits.DefaultSecureTenant
+  override def getUser(id: UserId)(implicit tenant: Tenant) = {
     UserService.find(IdentityId(id.value, id.provider.getOrElse("userpass")))
       .map(u => Oauth2User(UserId(u.identityId.userId, Option(u.identityId.providerId)), u.passwordInfo.map(i => SecretInfo(i.password, i.salt))))
   }

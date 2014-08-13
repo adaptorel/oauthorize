@@ -2,13 +2,9 @@ import play.Project._
 
 name := "oauthorize-play-app"
 
-version in ThisBuild := "0.3.0"
+version in ThisBuild := "0.3.1"
 
 organization in ThisBuild := "com.oauthorize"
-
-libraryDependencies ++= Seq(
-  "ws.securesocial" %% "securesocial" % "2.1.3"
-)
 
 publishMavenStyle in ThisBuild := true
 

@@ -7,6 +7,7 @@ import oauthorize.playapp._
 object Global extends Oauth2Filters {
   override def onStart(app: Application) = {
     import oauthorize.service.TenantImplicits._
+    import oauthorize.playapp.SecureTenantImplicits._
     app.configuration.getBoolean("with.test.data").map { withTestData =>
       if (withTestData) {
         import securesocial.core._

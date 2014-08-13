@@ -81,7 +81,7 @@ trait ExecutionContextProvider {
 trait Oauth2Defaults extends Oauth2Config with ExecutionContextProvider with Logging
 
 trait UserStore {
-  def getUser(id: UserId): Option[Oauth2User]
+  def getUser(id: UserId)(implicit tenant: Tenant): Option[Oauth2User]
 }
 
 trait UserPasswordHasher {

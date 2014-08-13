@@ -78,6 +78,7 @@ class ResourceOwnerCredentialsApplicationSpec extends PlaySpecification with Tes
     }
     
     s"send 400 if incorrect scope" in new WithServer(port = 3333) {
+      import oauthorize.playapp.SecureTenantImplicits._
       val client = Some(Oauth2Client("the_client", Oauth.hashClientSecret(SecretInfo("pass")), Seq("global"), Seq(GrantTypes.password, GrantTypes.refresh_token), RedirectUri, Seq(), 3600, 3600, None, false))
       UserService.save(TestUser)
       val resp = postf("/oauth/token", grant_type -> GrantTypes.password, username -> "user@test.com", password -> "pass", "scope" -> "badscope")(client)
@@ -87,6 +88,7 @@ class ResourceOwnerCredentialsApplicationSpec extends PlaySpecification with Tes
     }    
 
     s"send 200 if request is correct" in new WithServer(port = 3333) {
+      import oauthorize.playapp.SecureTenantImplicits._
       import oauth2.spec.AccessTokenResponseParams._
       val client = Some(Oauth2Client("the_client", Oauth.hashClientSecret(SecretInfo("pass")), Seq("global"), Seq(GrantTypes.password, GrantTypes.refresh_token), RedirectUri, Seq(), 3600, 3600, None, false))
       UserService.save(TestUser)

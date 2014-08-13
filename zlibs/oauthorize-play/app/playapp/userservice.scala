@@ -21,6 +21,8 @@ import securesocial.core._
 import securesocial.core.providers.Token
 import securesocial.core.IdentityId
 import scala.Option.option2Iterable
+import play.api.mvc.{ Request, RequestHeader }
+import oauthorize.service.TenantImplicits
 
 
 /**
@@ -30,6 +32,7 @@ import scala.Option.option2Iterable
  * it stores everything in memory.
  */
 class InMemoryUserService(application: Application) extends UserServicePlugin(application) {
+  
   val logger = Logger("application.controllers.InMemoryUserService")
   // a simple User class that can have multiple identities
   case class User(id: String, identities: List[Identity])
@@ -39,7 +42,13 @@ class InMemoryUserService(application: Application) extends UserServicePlugin(ap
   //private var identities = Map[String, Identity]()
   private var tokens = Map[String, Token]()
 
-  def find(id: IdentityId): Option[Identity] = {
+  private def tenant() = TenantImplicits.DefaultTenant
+  
+  override implicit def tenantExtractor[A](implicit request: Request[A]): SecureTenant = SecureTenantImplicits.DefaultSecureTenant
+  
+  override implicit def headerTenantExtractor(implicit request: RequestHeader): SecureTenant = SecureTenantImplicits.DefaultSecureTenant
+  
+  override def find(id: IdentityId)(implicit tenant: SecureTenant): Option[Identity] = {
     if ( logger.isDebugEnabled ) {
       logger.debug("users = %s".format(users))
     }
@@ -52,7 +61,7 @@ class InMemoryUserService(application: Application) extends UserServicePlugin(ap
     result.headOption
   }
 
-  def findByEmailAndProvider(email: String, providerId: String): Option[Identity] = {
+  override def findByEmailAndProvider(email: String, providerId: String)(implicit tenant: SecureTenant):Option[Identity] = {
     if ( logger.isDebugEnabled ) {
       logger.debug("users = %s".format(users))
     }
@@ -65,7 +74,7 @@ class InMemoryUserService(application: Application) extends UserServicePlugin(ap
     result.headOption
   }
 
-  def save(user: Identity): Identity = {
+  override def save(user: Identity)(implicit tenant: SecureTenant): Identity = {
     // first see if there is a user with this Identity already.
     val maybeUser = users.find {
       case (key, value) if value.identities.exists(_.identityId == user.identityId ) => true
@@ -87,37 +96,16 @@ class InMemoryUserService(application: Application) extends UserServicePlugin(ap
     user
   }
 
-  def link(current: Identity, to: Identity) {
-    val currentId = current.identityId.userId + "-" + current.identityId.providerId
-    val toId = to.identityId.userId + "-" + to.identityId.providerId
-    Logger.info(s"linking $currentId to $toId")
-
-    val maybeUser = users.find {
-      case (key, value) if value.identities.exists(_.identityId == current.identityId ) => true
-    }
-
-    maybeUser.foreach { u =>
-      if ( !u._2.identities.exists(_.identityId == to.identityId)) {
-        // do the link only if it's not linked already
-        users = users + (u._1 -> User(u._1, to :: u._2.identities  ))
-      }
-    }
-  }
-
-  def save(token: Token) {
+  override def save(token: Token)(implicit tenant: SecureTenant) {
     tokens += (token.uuid -> token)
   }
 
-  def findToken(token: String): Option[Token] = {
+  override def findToken(token: String)(implicit tenant: SecureTenant): Option[Token] = {
     tokens.get(token)
   }
 
-  def deleteToken(uuid: String) {
+  override def deleteToken(uuid: String)(implicit tenant: SecureTenant) {
     tokens -= uuid
-  }
-
-  def deleteTokens() {
-    tokens = Map()
   }
 
   def deleteExpiredTokens() {

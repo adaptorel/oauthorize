@@ -55,6 +55,7 @@ trait TestHelpers {
       additionalPlugins = Seq("oauthorize.test.FakeLoggedInUserAuthenticatorStore"))
   
   lazy val TestUser = {
+    import oauthorize.playapp.SecureTenantImplicits._
     val u = securesocial.core.SocialUser(
     IdentityId("user@test.com", "userpass"),
     "Test",
