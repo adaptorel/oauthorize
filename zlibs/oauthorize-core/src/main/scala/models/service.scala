@@ -33,9 +33,9 @@ trait Oauth2Store {
   def getAccessToken(value: String): Option[AccessToken]
   def getRefreshToken(value: String): Option[RefreshToken]
   def markForRemoval(item: Expirable, key: Option[String])
-  def findAuthzRequestsToEvict(offset: Integer, howMany: Integer): Seq[AuthzRequest]
-  def findAccessTokensToEvict(offset: Integer, howMany: Integer): Seq[AccessToken]
-  def findRefreshTokensToEvict(offset: Integer, howMany: Integer): Seq[RefreshToken]
+  def findAuthzRequestsToEvict(offset: Int, howMany: Int): Seq[AuthzRequest]
+  def findAccessTokensToEvict(offset: Int, howMany: Int): Seq[AccessToken]
+  def findRefreshTokensToEvict(offset: Int, howMany: Int): Seq[RefreshToken]
 }
 
 trait Oauth2Config {
@@ -203,9 +203,9 @@ trait InMemoryStoreDelegate extends Oauth2Store {
       case _ => throw new IllegalArgumentException(s"Eviction not supported for item '$item'")
     }
   }
-  override def findAuthzRequestsToEvict(offset: Integer, howMany: Integer): Seq[AuthzRequest] = authzCodeStore.filter(c => c._2.isExpired).map(_._2).toSeq
-  override def findAccessTokensToEvict(offset: Integer, howMany: Integer): Seq[AccessToken] = accessTokenStore.filter(c => c._2.isExpired).map(_._2).toSeq
-  override def findRefreshTokensToEvict(offset: Integer, howMany: Integer): Seq[RefreshToken] = refreshTokenStore.filter(c => c._2.isExpired).map(_._2).toSeq
+  override def findAuthzRequestsToEvict(offset: Int, howMany: Int): Seq[AuthzRequest] = authzCodeStore.filter(c => c._2.isExpired).map(_._2).toSeq
+  override def findAccessTokensToEvict(offset: Int, howMany: Int): Seq[AccessToken] = accessTokenStore.filter(c => c._2.isExpired).map(_._2).toSeq
+  override def findRefreshTokensToEvict(offset: Int, howMany: Int): Seq[RefreshToken] = refreshTokenStore.filter(c => c._2.isExpired).map(_._2).toSeq
 }
 
 private object DefaultInMemoryStoreDelegate extends InMemoryStoreDelegate
@@ -220,7 +220,7 @@ trait InMemoryOauth2Store extends Oauth2Store {
   override def getAccessToken(value: String) = delegate.getAccessToken(value)
   override def getRefreshToken(value: String) = delegate.getRefreshToken(value)
   override def markForRemoval(item: Expirable, key: Option[String]) = delegate.markForRemoval(item, key)
-  override def findAuthzRequestsToEvict(offset: Integer, howMany: Integer): Seq[AuthzRequest] = delegate.findAuthzRequestsToEvict(offset, howMany)
-  override def findAccessTokensToEvict(offset: Integer, howMany: Integer): Seq[AccessToken] = delegate.findAccessTokensToEvict(offset, howMany)
-  override def findRefreshTokensToEvict(offset: Integer, howMany: Integer): Seq[RefreshToken] = delegate.findRefreshTokensToEvict(offset, howMany)
+  override def findAuthzRequestsToEvict(offset: Int, howMany: Int): Seq[AuthzRequest] = delegate.findAuthzRequestsToEvict(offset, howMany)
+  override def findAccessTokensToEvict(offset: Int, howMany: Int): Seq[AccessToken] = delegate.findAccessTokensToEvict(offset, howMany)
+  override def findRefreshTokensToEvict(offset: Int, howMany: Int): Seq[RefreshToken] = delegate.findRefreshTokensToEvict(offset, howMany)
 }
