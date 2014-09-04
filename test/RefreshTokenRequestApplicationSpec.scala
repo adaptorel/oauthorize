@@ -49,6 +49,18 @@ class RefreshTokenRequestApplicationSpec extends PlaySpecification with TestHelp
       (resp.json \ "error") must equalTo(JsString(invalid_client))
       (resp.json \ "error_description") must equalTo(JsString("bad credentials"))
     }
+    
+    "respond with 400 if refresh_token unsupported" in new WithServer(port = 3333) {
+      import oauth2.spec.AccessTokenResponseParams._
+      val c = Oauth.storeClient(Oauth2Client("the_client", hash("pass"),
+        Seq("global"), Seq(GrantTypes.authorization_code),
+        RedirectUri, Seq(), 3600, 3600, None, true))
+      val user = UserId("dorel@eloquentix.com", Some("google"))
+      val resp = postf("/oauth/token", refresh_token -> "1123", grant_type -> GrantTypes.refresh_token)(Some(c))
+      resp.status must equalTo(400)
+      (resp.json \ "error") must equalTo(JsString(unsupported_grant_type))
+      (resp.json \ "error_description") must equalTo(JsString("unsupported grant type"))
+    }
 
     "respond with 200 and the access token if request is correct" in new WithServer(port = 3333) {
       import oauth2.spec.AccessTokenResponseParams._

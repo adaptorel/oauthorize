@@ -52,6 +52,19 @@ class AccessTokenRequestApplicationSpec extends PlaySpecification with TestHelpe
       (resp.json \ "error") must equalTo(JsString(invalid_request))
       (resp.json \ "error_description") must equalTo(JsString("expired authorization code"))
     }    
+
+    "respond with 400 if authorization_code unsupported" in new WithServer(port = 3333, app = FakeLoginApp) {
+      import oauth2.spec.AccessTokenResponseParams._
+      val client = Oauth2Client("the_client", Oauth.hashClientSecret(SecretInfo("pass")), Seq("global"), Seq(GrantTypes.password), RedirectUri, Seq(), 3600, 3600, None, false)     
+      Oauth.storeClient(client)
+      val authzCode = URLDecoder.decode(AuthzHelper.authorizationRequest, "utf8")
+      Oauth.getAuthzRequest(authzCode) must beSome
+      Oauth.getAuthzRequest(authzCode).get.code must beSome(authzCode)
+      val resp = postf("/oauth/token", code -> authzCode, grant_type -> GrantTypes.authorization_code, redirect_uri -> RedirectUri)(Some(client))
+      resp.status must equalTo(400)
+      (resp.json \ "error") must equalTo(JsString(unsupported_grant_type))
+      (resp.json \ "error_description") must equalTo(JsString("unsupported grant type"))
+    }    
     
     "respond with 200 and the access token if request is correct" in new WithServer(port = 3333, app = FakeLoginApp) {
       import oauth2.spec.AccessTokenResponseParams._

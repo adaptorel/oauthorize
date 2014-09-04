@@ -38,6 +38,7 @@ case class RefreshTokenRequest(
   refreshToken: String) extends RefreshTokenRequestValidation
 
 case class ClientCredentialsRequest(
+  grantType: GrantType,  
   client: Oauth2Client,
   authScope: Option[String]) extends ClientCredentialsRequestValidation
 

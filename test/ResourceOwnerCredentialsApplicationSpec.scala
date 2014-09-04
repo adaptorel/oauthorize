@@ -87,13 +87,22 @@ class ResourceOwnerCredentialsApplicationSpec extends PlaySpecification with Tes
       (resp.json \ "error_description") must equalTo(JsString("unsupported scope"))
     }    
 
+    s"send 400 if resource_owner_credentials unsupported" in new WithServer(port = 3333) {
+      import oauth2.spec.AccessTokenResponseParams._
+      val client = Some(Oauth2Client("the_client", Oauth.hashClientSecret(SecretInfo("pass")), Seq("global"), Seq(GrantTypes.implic1t), RedirectUri, Seq(), 3600, 3600, None, false))
+      UserService.save(TestUser)
+      val accessResp = postf("/oauth/token", grant_type -> GrantTypes.password, username -> "user@test.com", password -> "pass", "scope" -> "global")(client)
+      accessResp.status must equalTo(400)
+      (accessResp.json \ "error") must equalTo(JsString(unsupported_grant_type))
+      (accessResp.json \ "error_description") must equalTo(JsString("unsupported grant type"))
+    }    
+    
     s"send 200 if request is correct" in new WithServer(port = 3333) {
       import oauthorize.playapp.SecureTenantImplicits._
       import oauth2.spec.AccessTokenResponseParams._
       val client = Some(Oauth2Client("the_client", Oauth.hashClientSecret(SecretInfo("pass")), Seq("global"), Seq(GrantTypes.password, GrantTypes.refresh_token), RedirectUri, Seq(), 3600, 3600, None, false))
       UserService.save(TestUser)
       val accessResp = postf("/oauth/token", grant_type -> GrantTypes.password, username -> "user@test.com", password -> "pass", "scope" -> "global")(client)
-      accessResp.status must equalTo(200)
       accessResp.status must equalTo(200)
       (accessResp.json \ access_token).as[String] must beMatching(".{53}")
       (accessResp.json \ refresh_token).as[String] must beMatching(".{53}")
