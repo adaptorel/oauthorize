@@ -25,7 +25,7 @@ object ValidationUtils {
       if (client.invalidScopes(authScope)) Some(err(invalid_scope, "unsupported scope")) else None
     }
   }
-  
+
   def errForScope(authScope: Option[String])(implicit client: Oauth2Client): Option[Err] = {
     errForScope(authScope.map(_.split(ScopeSeparator).toSeq).getOrElse(Seq()))
   }
@@ -48,15 +48,16 @@ trait AuthzRequestValidation {
     errClientId orElse
       errResponseType orElse
       errRedirectUri orElse
-      errForScope(authScope) orElse errInvalidScope
+      errForScope(authScope) orElse
+      errForGrantTypes
   }
 
   private def errClientId = {
     errForEmptyString(clientId, err(invalid_request, s"mandatory: $client_id"))
   }
 
-  private def errInvalidScope(implicit client: Oauth2Client) = {
-    if ((ResponseType.token == responseType && !client.authorizedGrantTypes.contains(GrantTypes.implic1t)) &&
+  private def errForGrantTypes(implicit client: Oauth2Client) = {
+    if ((ResponseType.token == responseType && !client.authorizedGrantTypes.contains(GrantTypes.implic1t)) ||
       (ResponseType.code == responseType && !client.authorizedGrantTypes.contains(GrantTypes.authorization_code)))
       Some(err(unsupported_response_type, "unsupported grant type"))
     else
@@ -149,5 +150,6 @@ trait ResourceOwnerCredentialsRequestValidation {
 
 trait ClientCredentialsRequestValidation {
   this: ClientCredentialsRequest =>
-  def getError(implicit client: Oauth2Client): Option[Err] = errForScope(authScope)
+  def getError(implicit client: Oauth2Client): Option[Err] =
+    errForGrantType(grantType, client) orElse errForScope(authScope)
 }

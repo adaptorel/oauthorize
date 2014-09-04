@@ -42,22 +42,20 @@ trait RefreshTokenEndpoint extends Dispatcher {
   private def processRefreshTokenRequest(refreshTokenRequest: RefreshTokenRequest, oauthClient: Oauth2Client): Either[Err, AccessTokenResponse] = {
     import oauth2.spec.AccessTokenErrors._
 
-    getRefreshToken(refreshTokenRequest.refreshToken) match {
-      case None => Left(err(invalid_grant, "invalid refresh token"))
-      case Some(refreshToken) => {
-        refreshTokenRequest.getError(oauthClient) match {
-          case Some(error) => Left(error)
-          case None if (refreshToken.isExpired) => Left(err(invalid_grant, "refresh token expired"))
-          case None => {
-            /*
+    refreshTokenRequest.getError(oauthClient) match {
+      case Some(error) => Left(error)
+      case None => getRefreshToken(refreshTokenRequest.refreshToken) match {
+        case None => Left(err(invalid_grant, "invalid refresh token"))
+        case Some(refreshToken) if (refreshToken.isExpired) => Left(err(invalid_grant, "refresh token expired"))
+        case Some(refreshToken) => {
+          /*
              * TODO do we care about any previously stored data since he's started
              * the flow from the beginning, with the authorization code and everything?
              */
-            val accessToken = generateAccessToken(oauthClient, refreshToken.tokenScope, refreshToken.userId)
-            val stored = storeTokens(AccessAndRefreshTokens(accessToken, None), oauthClient)
-            val response = AccessTokenResponse(stored.accessToken.value, stored.refreshToken.map(_.value), TokenType.bearer, stored.accessToken.validity, refreshToken.tokenScope.mkString(ScopeSeparator))
-            Right(response)
-          }
+          val accessToken = generateAccessToken(oauthClient, refreshToken.tokenScope, refreshToken.userId)
+          val stored = storeTokens(AccessAndRefreshTokens(accessToken, None), oauthClient)
+          val response = AccessTokenResponse(stored.accessToken.value, stored.refreshToken.map(_.value), TokenType.bearer, stored.accessToken.validity, refreshToken.tokenScope.mkString(ScopeSeparator))
+          Right(response)
         }
       }
     }

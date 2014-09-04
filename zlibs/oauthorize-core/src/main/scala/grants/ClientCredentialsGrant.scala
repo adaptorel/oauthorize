@@ -30,7 +30,7 @@ trait ClientCredentialsGrant extends Dispatcher {
         case Some(client) => {
           (req.param(grant_type)) match {
             case (Some(grantType)) => {
-              val ccReq = ClientCredentialsRequest(client, req.param(scope))
+              val ccReq = ClientCredentialsRequest(grantType, client, req.param(scope))
               processClientCredentialsRequest(ccReq, client)
             } case _ => Left(err(invalid_request, s"mandatory: $grant_type"))
           }
