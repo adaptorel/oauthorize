@@ -89,6 +89,7 @@ class ResourceOwnerCredentialsApplicationSpec extends PlaySpecification with Tes
 
     s"send 400 if resource_owner_credentials unsupported" in new WithServer(port = 3333) {
       import oauth2.spec.AccessTokenResponseParams._
+      import oauthorize.playapp.SecureTenantImplicits._
       val client = Some(Oauth2Client("the_client", Oauth.hashClientSecret(SecretInfo("pass")), Seq("global"), Seq(GrantTypes.implic1t), RedirectUri, Seq(), 3600, 3600, None, false))
       UserService.save(TestUser)
       val accessResp = postf("/oauth/token", grant_type -> GrantTypes.password, username -> "user@test.com", password -> "pass", "scope" -> "global")(client)
