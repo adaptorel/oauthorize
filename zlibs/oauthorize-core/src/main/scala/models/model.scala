@@ -13,6 +13,7 @@ sealed trait Expirable {
   def validity: Long
   def created: Long
   def isExpired = created + validity * 1000 < System.currentTimeMillis
+  def validityRemaining = created / 1000 + validity - System.currentTimeMillis / 1000
 }
 
 case class AuthzRequest(
