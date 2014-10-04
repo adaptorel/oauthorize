@@ -2,7 +2,7 @@ import play.Project._
 
 name := "oauthorize-play-app"
 
-version in ThisBuild := "0.2.7"
+version in ThisBuild := "0.2.8"
 
 organization in ThisBuild := "com.oauthorize"
 
@@ -20,4 +20,4 @@ lazy val main = project.in(file("."))
 lazy val oauthorizePlay = project.in(file("zlibs/oauthorize-play"))
     .aggregate(oauthorize)
     .dependsOn(oauthorize)
-lazy val oauthorize = project.in(file("zlibs/oauthorize-core"))    
+lazy val oauthorize = project.in(file("zlibs/oauthorize-core"))

@@ -60,7 +60,7 @@ class ClientCredentialsApplicationSpec extends PlaySpecification with TestHelper
       (resp.json \ "error") must equalTo(JsString(unsupported_grant_type))
       (resp.json \ "error_description") must equalTo(JsString("unsupported grant type"))
     }
-    
+
     "respond with 200 and the access token if request is correct" in new WithServer(port = 3333) {
       import oauth2.spec.AccessTokenResponseParams._
       val c = Oauth.storeClient(Oauth2Client("the_client", hash("pass"),
@@ -89,6 +89,20 @@ class ClientCredentialsApplicationSpec extends PlaySpecification with TestHelper
       (accessResp.json \ token_type).as[String] must equalTo("bearer")
       (accessResp.json \ scope).as[String] must equalTo("global")
       (accessResp.json \ expires_in).as[Int] must beGreaterThan(0)
+    }
+
+    "respond with 200 and the access token if scope is missing" in new WithServer(port = 3333) {
+      import oauth2.spec.AccessTokenResponseParams._
+      val c = Oauth.storeClient(Oauth2Client("the_client", hash("pass"),
+        Seq("global"), Seq(GrantTypes.client_credentials, GrantTypes.refresh_token),
+        RedirectUri, Seq(), 3600, 3600, None, true))
+      val resp = postf("/oauth/token", grant_type -> GrantTypes.client_credentials)(Some(c))
+      resp.status must equalTo(200)
+      (resp.json \ access_token).as[String] must beMatching(".{53}")
+      (resp.json \ refresh_token).as[String] must beMatching(".{53}")
+      (resp.json \ token_type).as[String] must equalTo("bearer")
+      (resp.json \ scope).as[String] must equalTo("global")
+      (resp.json \ expires_in).as[Int] must beGreaterThan(0)
     }
   }
 }

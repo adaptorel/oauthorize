@@ -20,10 +20,8 @@ object ValidationUtils {
   }
 
   def errForScope(authScope: Seq[String])(implicit client: Oauth2Client): Option[Err] = {
-    import oauth2.spec.AuthzErrors.{ invalid_request, invalid_scope }
-    errForEmpty(authScope, err(invalid_request, s"mandatory: $scope")) orElse {
-      if (client.invalidScopes(authScope)) Some(err(invalid_scope, "unsupported scope")) else None
-    }
+    import oauth2.spec.AuthzErrors.invalid_scope
+    if (client.invalidScopes(authScope)) Some(err(invalid_scope, "unsupported scope")) else None
   }
 
   def errForScope(authScope: Option[String])(implicit client: Oauth2Client): Option[Err] = {
