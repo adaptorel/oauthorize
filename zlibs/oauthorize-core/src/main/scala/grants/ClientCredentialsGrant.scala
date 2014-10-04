@@ -44,7 +44,7 @@ trait ClientCredentialsGrant extends Dispatcher {
     ccReq.getError(client) match {
       case Some(error) => Left(error)
       case None => {
-        val scopes = ccReq.authScope.map(_.split(ScopeSeparator).toSeq).getOrElse(Seq())
+        val scopes = ccReq.authScope.map(_.split(ScopeSeparator).toSeq).getOrElse(client.scope)
         val accessToken = generateAccessToken(ccReq.client, scopes, None) //no user for c_c
         val refreshToken = if (ccReq.client.authorizedGrantTypes.contains(GrantTypes.refresh_token)) {
           Some(generateRefreshToken(ccReq.client, scopes, None))
