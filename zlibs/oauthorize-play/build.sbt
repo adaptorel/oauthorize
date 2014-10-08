@@ -3,7 +3,7 @@ import play.Project._
 name := "oauthorize-play-22x"
 
 libraryDependencies ++= Seq(
-  "securesocial" %% "securesocial" % "2.1.3.3-snmt"
+  "securesocial" %% "securesocial" % "2.1.3.5-snmt"
 )     
 
 publishTo in ThisBuild := {
