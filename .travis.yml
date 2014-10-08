@@ -1,5 +1,5 @@
 language: scala
-script: sbt 'set envVars:=Map("APPLICATION_SECRET"->"a","GOOGLE_CLIENT_ID"->"a","GOOGLE_CLIENT_SECRET"->"a","WITH_TEST_DATA"->"true")' ++$TRAVIS_SCALA_VERSION scoverage:test coveralls
+script: sbt 'set envVars:=Map("APPLICATION_SECRET"->"a","GOOGLE_CLIENT_ID"->"a","GOOGLE_CLIENT_SECRET"->"a","WITH_TEST_DATA"->"true")' test
 scala:
   - "2.10.3"
 jdk:
