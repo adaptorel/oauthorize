@@ -1,4 +1,4 @@
-oauthorize
+oauthorize [![Build Status](https://travis-ci.org/adaptorel/oauthorize.svg?branch=master)](https://travis-ci.org/adaptorel/oauthorize)
 ==========
 
 An Oauth2 provider. Lightweight but tries to closely follow the spec.
