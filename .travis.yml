@@ -1,0 +1,17 @@
+language: scala
+script: sbt "test"
+scala:
+  - "2.10.3"
+jdk:
+  - oraclejdk7
+  - openjdk7
+env:
+  - SBT_OPTS="-XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -XX:PermSize=256M -XX:MaxPermSize=512M"
+  - GOOGLE_CLIENT_ID="a"
+  - GOOGLE_CLIENT_SECRET="a"
+  - APPLICATION_SECRET="a"
+  - WITH_TEST_DATA="a"
+# whitelist
+branches:
+  only:
+    - master
