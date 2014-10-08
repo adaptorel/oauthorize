@@ -33,9 +33,6 @@ trait Oauth2Store {
   def getAccessToken(value: String): Option[AccessToken]
   def getRefreshToken(value: String): Option[RefreshToken]
   def markForRemoval(item: Expirable, key: Option[String])
-  def findAuthzRequestsToEvict(offset: Int, howMany: Int): Seq[AuthzRequest]
-  def findAccessTokensToEvict(offset: Int, howMany: Int): Seq[AccessToken]
-  def findRefreshTokensToEvict(offset: Int, howMany: Int): Seq[RefreshToken]
 }
 
 trait Oauth2Config {
@@ -44,13 +41,6 @@ trait Oauth2Config {
   def userApprovalEndpoint: String = "/oauth/approve"
   def authzCodeValiditySeconds: Long = 60
   def evictorIntervalSeconds: Long = 60 * 10 // seconds, every 10 minutes by default
-}
-
-trait Evictor {
-  def evictAll: Int
-  def evictAuthzCodes(offset: Int): Int
-  def evictAccessTokens(offset: Int): Int
-  def evictRefreshTokens(offset: Int): Int
 }
 
 trait Logging {
@@ -98,48 +88,6 @@ trait DefaultAuthzCodeGenerator extends AuthzCodeGenerator {
   override def generateAccessToken(oauthClient: Oauth2Client, authScope: Seq[String], userId: Option[UserId]) = AccessToken(newToken, oauthClient.clientId, authScope, oauthClient.accessTokenValidity, System.currentTimeMillis, userId)
   override def generateRefreshToken(oauthClient: Oauth2Client, tokenScope: Seq[String], userId: Option[UserId]) = RefreshToken(newToken, oauthClient.clientId, tokenScope, oauthClient.refreshTokenValidity, System.currentTimeMillis, userId)
   def newToken = hashClientSecret(SecretInfo(UUID.randomUUID().toString)).secret
-}
-
-trait DefaultEvictor extends Evictor {
-  this: Oauth2Config with Oauth2Store with Logging =>
-    
-  val batchSize = 100
-  override def evictAuthzCodes(offset: Int): Int = {
-    val items = findAuthzRequestsToEvict(offset, batchSize)
-    items.foreach(req => markForRemoval(req, req.code))
-    if (items.size > 0) {
-      val evicted = evictAuthzCodes(offset + batchSize)
-      items.size + evicted
-    } else items.size
-  }
-  override def evictAccessTokens(offset: Int): Int = {
-    val items = findAccessTokensToEvict(offset, batchSize)
-    items.foreach(t => markForRemoval(t, Option(t.value)))
-    if (items.size > 0) {
-      val evicted = evictAccessTokens(offset + batchSize)
-      items.size + evicted
-    } else items.size
-  }
-  override def evictRefreshTokens(offset: Int): Int = {
-    val items = findRefreshTokensToEvict(offset, batchSize)
-    items.foreach(t => markForRemoval(t, Option(t.value)))
-    if (items.size > 0) {
-      val evicted = evictRefreshTokens(offset + batchSize)
-      items.size + evicted
-    } else items.size
-  }
-  override def evictAll = {
-    debug("running eviction job for authz codes")
-    val c = evictAuthzCodes(0)
-    debug(s"evicted $c authz codes")
-    debug("runing eviction job for access tokens")
-    val at = evictAccessTokens(0)
-    debug(s"evicted $at access tokens")
-    debug("running eviction job for refresh tokens")
-    val rt = evictRefreshTokens(0)
-    debug(s"evicted $rt refresh tokens")
-    c + at + rt
-  }
 }
 
 trait Sha256SecretHasher {
@@ -203,9 +151,6 @@ trait InMemoryStoreDelegate extends Oauth2Store {
       case _ => throw new IllegalArgumentException(s"Eviction not supported for item '$item'")
     }
   }
-  override def findAuthzRequestsToEvict(offset: Int, howMany: Int): Seq[AuthzRequest] = authzCodeStore.filter(c => c._2.isExpired).map(_._2).toSeq
-  override def findAccessTokensToEvict(offset: Int, howMany: Int): Seq[AccessToken] = accessTokenStore.filter(c => c._2.isExpired).map(_._2).toSeq
-  override def findRefreshTokensToEvict(offset: Int, howMany: Int): Seq[RefreshToken] = refreshTokenStore.filter(c => c._2.isExpired).map(_._2).toSeq
 }
 
 private object DefaultInMemoryStoreDelegate extends InMemoryStoreDelegate
@@ -220,7 +165,4 @@ trait InMemoryOauth2Store extends Oauth2Store {
   override def getAccessToken(value: String) = delegate.getAccessToken(value)
   override def getRefreshToken(value: String) = delegate.getRefreshToken(value)
   override def markForRemoval(item: Expirable, key: Option[String]) = delegate.markForRemoval(item, key)
-  override def findAuthzRequestsToEvict(offset: Int, howMany: Int): Seq[AuthzRequest] = delegate.findAuthzRequestsToEvict(offset, howMany)
-  override def findAccessTokensToEvict(offset: Int, howMany: Int): Seq[AccessToken] = delegate.findAccessTokensToEvict(offset, howMany)
-  override def findRefreshTokensToEvict(offset: Int, howMany: Int): Seq[RefreshToken] = delegate.findRefreshTokensToEvict(offset, howMany)
 }
