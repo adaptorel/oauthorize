@@ -40,7 +40,7 @@ trait Oauth2Store {
   def storeTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client)(implicit tenant: Tenant): AccessAndRefreshTokens
   def getAccessToken(value: String)(implicit tenant: Tenant): Option[AccessToken]
   def getRefreshToken(value: String)(implicit tenant: Tenant): Option[RefreshToken]
-  def markForRemoval(item: Expirable, key: Option[String])
+  def markForRemoval(item: Expirable, key: Option[String])(implicit tenant: Tenant)
 }
 
 trait Oauth2Config {
@@ -151,7 +151,7 @@ trait InMemoryStoreDelegate extends Oauth2Store {
   }
   override def getAccessToken(value: String)(implicit tenant: Tenant) = accessTokenStore.find(t => t._1 == value).map(_._2)
   override def getRefreshToken(value: String)(implicit tenant: Tenant) = refreshTokenStore.find(t => t._1 == value).map(_._2)
-  override def markForRemoval(item: Expirable, key: Option[String]) = {
+  override def markForRemoval(item: Expirable, key: Option[String])(implicit tenant: Tenant) = {
     item match {
       case ar: AuthzRequest => key.foreach(authzCodeStore.remove(_))
       case at: AccessToken => accessTokenStore.remove(at.value)
@@ -173,5 +173,5 @@ trait InMemoryOauth2Store extends Oauth2Store {
   override def storeTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client)(implicit tenant: Tenant) = delegate.storeTokens(accessAndRefreshTokens, oauthClient)
   override def getAccessToken(value: String)(implicit tenant: Tenant) = delegate.getAccessToken(value)
   override def getRefreshToken(value: String)(implicit tenant: Tenant) = delegate.getRefreshToken(value)
-  override def markForRemoval(item: Expirable, key: Option[String]) = delegate.markForRemoval(item, key)
+  override def markForRemoval(item: Expirable, key: Option[String])(implicit tenant: Tenant) = delegate.markForRemoval(item, key)
 }
