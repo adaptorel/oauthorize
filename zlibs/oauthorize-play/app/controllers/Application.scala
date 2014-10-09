@@ -6,6 +6,7 @@ import grants._
 import play.api.mvc._
 import play.api.mvc.Results.InternalServerError
 import play.api.GlobalSettings
+import play.filters.csrf._
 
 trait OauthMix extends Oauth2DefaultsPlay
   with InMemoryOauth2Store
@@ -25,6 +26,7 @@ object ResourceOwnerCredentialsGrant extends ResourceOwnerCredentialsGrantPlay w
 object UserApprovalEndpoint extends UserApprovalPlay with OauthMix
 
 class Oauth2Filters extends WithFilters(
+  CSRFFilter(),  
   Oauth2RequestValidator,
   AuthorizationCodeGrant,
   ImplicitGrant,

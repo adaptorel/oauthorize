@@ -3,7 +3,6 @@ package oauthorize.playapp.grants
 import play.api.libs.json._
 import play.api.mvc._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
-
 import oauth2.spec.model._
 import oauth2.spec._
 import oauthorize.model._
@@ -11,6 +10,7 @@ import oauthorize.service._
 import oauthorize.utils._
 import oauthorize.grants.UserApproval
 import scala.concurrent.Future
+import play.filters.csrf.CSRF
 
 object json {
   implicit val AuthzCodeResponseFormat = Json.format[AuthzCodeResponse]
@@ -50,7 +50,14 @@ trait RenderingUtils extends Controller {
   }
 
   implicit def transformReponse(response: OauthResponse) = response match {
-    case a: InitiateAuthzApproval => Redirect(userApprovalEndpoint, Map(UserApproval.AuthzRequestKey -> authzParam(a.authzRequest), UserApproval.AutoApproveKey -> Seq(a.client.autoapprove.toString)), 302)
+    case a: InitiateAuthzApproval => {
+      val tmp = Map(
+        UserApproval.AuthzRequestKey -> authzParam(a.authzRequest),
+        UserApproval.AutoApproveKey -> Seq(a.client.autoapprove.toString))
+      val queryString = a.csrfToken.map(t => tmp + (CSRF.TokenName -> Seq(t)))
+        .getOrElse(tmp)
+      Redirect(userApprovalEndpoint, queryString, 302)
+    }
     case r: OauthRedirect =>
       if (r.paramsAsUrlFragment)
         Redirect(encodedQueryString(r.uri, r.params, "#"), Map(), 302)

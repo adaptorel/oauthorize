@@ -1,9 +1,14 @@
-@(authzRequest: oauthorize.model.AuthzRequest, authzRequestJsonString: String, client: oauthorize.model.Oauth2Client)
+@(authzRequest: oauthorize.model.AuthzRequest, authzRequestJsonString: String, client: oauthorize.model.Oauth2Client, request: RequestHeader)
 @import oauth2.spec.Req
 @import oauthorize.grants.UserApproval
+@import views.html.helper.CSRF
+@import oauthorize.playapp.Oauth
 @oauthz.main(title = "User approval") {
   <h1>Application '@client.clientId' requires access to '@authzRequest.authScope'</h1>
   <form action="/oauth/approve" method="POST">
+    @if(Oauth.csrfEnabled) {
+      @CSRF.formField(play.filters.csrf.CSRF.getToken(request).get)
+    }
     <input type="hidden" id="@UserApproval.AuthzRequestKey" name="@UserApproval.AuthzRequestKey" value="@authzRequestJsonString">
   	<input type="submit" value="@UserApproval.AllowValue" name="@UserApproval.Allow">
   	<input type="submit" value="@UserApproval.DenyValue" name="@UserApproval.Deny">
