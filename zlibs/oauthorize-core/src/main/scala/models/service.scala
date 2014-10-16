@@ -41,6 +41,7 @@ trait Oauth2Config {
   def userApprovalEndpoint: String = "/oauth/approve"
   def authzCodeValiditySeconds: Long = 60
   def evictorIntervalSeconds: Long = 60 * 10 // seconds, every 10 minutes by default
+  //def csrfEnabled = true
 }
 
 trait Logging {

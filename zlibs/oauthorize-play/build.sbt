@@ -3,6 +3,7 @@ import play.Project._
 name := "oauthorize-play-22x"
 
 libraryDependencies ++= Seq(
+  filters,
   "ws.securesocial" %% "securesocial" % "2.1.3"
 )     
 
