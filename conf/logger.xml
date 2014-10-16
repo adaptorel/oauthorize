@@ -18,6 +18,7 @@
   <logger name="play" level="WARN" />
   <logger name="application" level="WARN" />
   <logger name="oauthorize" level="WARN" />
+  <logger name="oauthorize.csrf" level="WARN" />
   
   <!-- Off these ones as they are annoying, and anyway we manage configuration ourself -->
   <logger name="com.avaje.ebean.config.PropertyMapLoader" level="OFF" />

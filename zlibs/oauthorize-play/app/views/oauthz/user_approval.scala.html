@@ -1,13 +1,13 @@
 @(authzRequest: oauthorize.model.AuthzRequest, authzRequestJsonString: String, client: oauthorize.model.Oauth2Client, request: RequestHeader)
 @import oauth2.spec.Req
 @import oauthorize.grants.UserApproval
-@import views.html.helper.CSRF
 @import oauthorize.playapp.Oauth
+@import oauthorize.playapp.csrf.{OauthorizeCsrf, OauthorizeCsrfConf}
 @oauthz.main(title = "User approval") {
   <h1>Application '@client.clientId' requires access to '@authzRequest.authScope'</h1>
   <form action="/oauth/approve" method="POST">
-    @if(Oauth.csrfEnabled) {
-      @CSRF.formField(play.filters.csrf.CSRF.getToken(request).get)
+    @OauthorizeCsrf.getToken(request).map { token =>
+    <input type="hidden" id="@OauthorizeCsrfConf.TokenName" name="@OauthorizeCsrfConf.TokenName" value="@token.value">
     }
     <input type="hidden" id="@UserApproval.AuthzRequestKey" name="@UserApproval.AuthzRequestKey" value="@authzRequestJsonString">
   	<input type="submit" value="@UserApproval.AllowValue" name="@UserApproval.Allow">
