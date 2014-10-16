@@ -95,7 +95,8 @@ case class OauthRedirect(
 
 case class InitiateAuthzApproval(
   authzRequest: AuthzRequest,
-  client: Oauth2Client) extends OauthResponse
+  client: Oauth2Client,
+  csrfToken: Option[String] = None) extends OauthResponse
 
 case class Err(
   error: String,

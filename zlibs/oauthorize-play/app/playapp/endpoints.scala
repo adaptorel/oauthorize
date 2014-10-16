@@ -6,9 +6,10 @@ import play.api.libs.json.Json
 import oauthorize.model._
 import oauthorize.service._
 import oauthorize.grants._
-import json._
 import oauthorize.utils.BasicAuthentication
 import scala.concurrent.Future
+import json._
+import oauthorize.playapp.csrf._
 
 trait TenantResolver {
   def resolveTenant(req: RequestHeader): Tenant
@@ -55,7 +56,7 @@ trait AuthorizationCodePlay extends Oauth2BodyReaderFilter with AuthorizationCod
   this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator with TenantResolver =>
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
-    Option(processAuthorizeRequest(a)(resolveTenant(req)).map(_.fold(err => err, good => good)))
+    Option(processAuthorizeRequest(a)(resolveTenant(req)).map(_.fold(err => err, good => WithCsrf(req, good))))
   }
 }
 
@@ -71,7 +72,7 @@ trait ImplicitGrantPlay extends Oauth2BodyReaderFilter with ImplicitGrant with R
   this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator with TenantResolver =>
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
-    def process(u: Oauth2User): SimpleResult = processImplicitRequest(a, u)(resolveTenant(req)).fold(err => err, good => good)
+    def process(u: Oauth2User): SimpleResult = processImplicitRequest(a, u)(resolveTenant(req)).fold(err => err, good => WithCsrf(req, good))
     Some(secureInvocation(process, req))
   }
 
@@ -97,21 +98,24 @@ trait UserApprovalPlay extends Oauth2BodyReaderFilter with UserApproval with Ren
     implicit val tenaant = resolveTenant(req)
     def lazyResult(u: Oauth2User) =
       if ("POST" == a.method || a.param(UserApproval.AutoApproveKey).exists(_ == "true"))
-        lazyProcessApprove(a, u)
+        lazyProcessApprove(req, a, u)
       else displayUserApprovalPage(a, req)
     Some(secureInvocation(lazyResult, req))
   }
 
-  private def lazyProcessApprove(a: OauthRequest, u: Oauth2User)(implicit tenant: Tenant): SimpleResult = {
-    processApprove(a, u)
+  private def lazyProcessApprove(req: RequestHeader, a: OauthRequest, u: Oauth2User)(implicit tenant: Tenant): SimpleResult = {
+    CsrfCheck(req, a) {
+      processApprove(a, u)
+    }.withSession(req.session - OauthorizeCsrfConf.TokenName)
   }
 
   def buildUserApprovalPage(authzReq: AuthzRequest, authzRequestJsonString: String, client: Oauth2Client, req: RequestHeader): SimpleResult = {
-    Ok(views.html.oauthz.user_approval(authzReq, authzRequestJsonString, client))
+    Ok(views.html.oauthz.user_approval(authzReq, authzRequestJsonString, client, req))
   }
   
   private def displayUserApprovalPage(a: OauthRequest, req: RequestHeader)(implicit tenant: Tenant): SimpleResult = {
-    implicit val request = req
+
+  implicit val request = req
     (for {
       authzRequestJsonString <- a.param(UserApproval.AuthzRequestKey)
       authzReq <- unmarshal(authzRequestJsonString)
