@@ -97,7 +97,7 @@ trait UserApprovalPlay extends Oauth2BodyReaderFilter with UserApproval with Ren
   }
 
   private def lazyProcessApprove(a: OauthRequest, u: Oauth2User, req: RequestHeader): SimpleResult = {
-    CsrfCheck(req, a, this) {
+    CsrfCheck(req, a) {
       processApprove(a, u)
     }.withSession(req.session - OauthorizeCsrfConf.TokenName)
   }

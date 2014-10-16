@@ -34,7 +34,7 @@ object WithCsrf {
 }
 
 object CsrfCheck {
-  def apply(req: RequestHeader, a: OauthRequest, cfg: Oauth2Config)(block: => OauthResponse): OauthResponse = {
+  def apply(req: RequestHeader, a: OauthRequest)(block: => OauthResponse): OauthResponse = {
     /*
      * ONLY perform the check if there's a token in the session which
      * means the filter is enabled
