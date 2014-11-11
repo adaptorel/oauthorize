@@ -7,7 +7,7 @@ import csrf.OauthorizeCsrfFilter
 
 trait OauthMix extends Oauth2DefaultsPlay
   with InMemoryOauth2Store
-  with DefaultAuthzCodeGenerator
+  with DefaultTokenGenerator
   with BCryptClientSecretHasher
   with BCryptUserPasswordHasher
 

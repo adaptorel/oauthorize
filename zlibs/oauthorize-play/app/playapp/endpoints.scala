@@ -12,7 +12,7 @@ import json._
 import oauthorize.playapp.csrf._
 
 trait Oauth2RequestValidatorPlay extends Oauth2BodyReaderFilter with Oauth2RequestValidator with RenderingUtils {
-  this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator =>
+  this: Oauth2Defaults with Oauth2Store with TokenGenerator =>
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
     logInfo(s"proceed with global validation at: $a")
@@ -21,7 +21,7 @@ trait Oauth2RequestValidatorPlay extends Oauth2BodyReaderFilter with Oauth2Reque
 }
 
 trait AccessTokenEndpointPlay extends Oauth2BodyReaderFilter with AccessTokenEndpoint with RenderingUtils {
-  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with AuthzCodeGenerator =>
+  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with TokenGenerator =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
     Option(processAccessTokenRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
@@ -29,7 +29,7 @@ trait AccessTokenEndpointPlay extends Oauth2BodyReaderFilter with AccessTokenEnd
 }
 
 trait RefreshTokenEndpointPlay extends Oauth2BodyReaderFilter with RefreshTokenEndpoint with RenderingUtils {
-  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with AuthzCodeGenerator =>
+  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with TokenGenerator =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
     Option(processRefreshTokenRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
@@ -37,7 +37,7 @@ trait RefreshTokenEndpointPlay extends Oauth2BodyReaderFilter with RefreshTokenE
 }
 
 trait ClientCredentialsGrantPlay extends Oauth2BodyReaderFilter with ClientCredentialsGrant with RenderingUtils {
-  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with AuthzCodeGenerator =>
+  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with TokenGenerator =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
     Option(processClientCredentialsRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
@@ -45,7 +45,7 @@ trait ClientCredentialsGrantPlay extends Oauth2BodyReaderFilter with ClientCrede
 }
 
 trait AuthorizationCodePlay extends Oauth2BodyReaderFilter with AuthorizationCode with RenderingUtils {
-  this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator =>
+  this: Oauth2Defaults with Oauth2Store with TokenGenerator =>
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
     Option(processAuthorizeRequest(a).map(_.fold(err => err, good => WithCsrf(req, good))))
@@ -53,7 +53,7 @@ trait AuthorizationCodePlay extends Oauth2BodyReaderFilter with AuthorizationCod
 }
 
 trait ResourceOwnerCredentialsGrantPlay extends Oauth2BodyReaderFilter with ResourceOwnerCredentialsGrant with RenderingUtils {
-  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with UserStore with UserPasswordHasher with AuthzCodeGenerator =>
+  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with UserStore with UserPasswordHasher with TokenGenerator =>
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
     Option(processOwnerCredentialsRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
@@ -61,7 +61,7 @@ trait ResourceOwnerCredentialsGrantPlay extends Oauth2BodyReaderFilter with Reso
 }
 
 trait ImplicitGrantPlay extends Oauth2BodyReaderFilter with ImplicitGrant with RenderingUtils with securesocial.core.SecureSocial {
-  this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator =>
+  this: Oauth2Defaults with Oauth2Store with TokenGenerator =>
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
     def process(u: Oauth2User): SimpleResult = processImplicitRequest(a, u).fold(err => err, good => WithCsrf(req, good))
@@ -75,7 +75,7 @@ trait ImplicitGrantPlay extends Oauth2BodyReaderFilter with ImplicitGrant with R
 }
 
 trait UserApprovalPlay extends Oauth2BodyReaderFilter with UserApproval with RenderingUtils with securesocial.core.SecureSocial {
-  this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator =>
+  this: Oauth2Defaults with Oauth2Store with TokenGenerator =>
 
   import oauth2.spec.Req._
   import oauthorize.utils._
