@@ -1,5 +1,5 @@
 import sbt._, Keys._
-import play.Project._
+import play.Project.{ filters, playScalaSettings }
 
 object Build extends Build {
   lazy val allSettings = Seq(
