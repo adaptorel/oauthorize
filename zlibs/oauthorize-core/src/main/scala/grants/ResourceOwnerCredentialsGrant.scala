@@ -11,7 +11,7 @@ import scala.concurrent.Future
 
 trait ResourceOwnerCredentialsGrant extends Dispatcher {
 
-  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with UserStore with UserPasswordHasher with AuthzCodeGenerator =>
+  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with UserStore with UserPasswordHasher with TokenGenerator =>
 
   override def matches(r: OauthRequest) = {
     val res = r.path == accessTokenEndpoint &&

@@ -77,13 +77,13 @@ trait BCryptUserPasswordHasher extends UserPasswordHasher with BCryptSecretHashe
   override def userPasswordMatches(rawPassword: String, info: SecretInfo): Boolean = secretMatches(rawPassword, info)
 }
 
-trait AuthzCodeGenerator {
+trait TokenGenerator {
   def generateCode(authzRequest: AuthzRequest): String
   def generateAccessToken(oauthClient: Oauth2Client, scope: Seq[String], userId: Option[UserId]): AccessToken
   def generateRefreshToken(oauthClient: Oauth2Client, scope: Seq[String], userId: Option[UserId]): RefreshToken
 }
 
-trait DefaultAuthzCodeGenerator extends AuthzCodeGenerator {
+trait DefaultTokenGenerator extends TokenGenerator {
   this: ClientSecretHasher =>
   override def generateCode(authzRequest: AuthzRequest) = newToken
   override def generateAccessToken(oauthClient: Oauth2Client, authScope: Seq[String], userId: Option[UserId]) = AccessToken(newToken, oauthClient.clientId, authScope, oauthClient.accessTokenValidity, System.currentTimeMillis, userId)

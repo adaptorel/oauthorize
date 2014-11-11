@@ -19,7 +19,7 @@ object UserApproval {
 }
 
 trait UserApproval extends Dispatcher {
-  this: Oauth2Defaults with Oauth2Store with AuthzCodeGenerator =>
+  this: Oauth2Defaults with Oauth2Store with TokenGenerator =>
 
   def unmarshal(authzRequestJsonString: String): Option[AuthzRequest]
 
