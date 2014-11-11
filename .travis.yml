@@ -1,13 +1,12 @@
 language: scala
-script: sbt 'set envVars:=Map("APPLICATION_SECRET"->"a","GOOGLE_CLIENT_ID"->"a","GOOGLE_CLIENT_SECRET"->"a","WITH_TEST_DATA"->"true")' test
+script: sbt test
 scala:
-  - "2.10.3"
+  - "2.10.4"
 jdk:
   - oraclejdk7
   - openjdk7
 env:
-  - SBT_OPTS="-XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -XX:PermSize=256M -XX:MaxPermSize=512M"
-# whitelist
+  - APPLICATION_SECRET=a GOOGLE_CLIENT_ID=a GOOGLE_CLIENT_SECRET=a WITH_TEST_DATA=true SBT_OPTS="-XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -XX:PermSize=256M -XX:MaxPermSize=512M"
 branches:
   only:
     - master
