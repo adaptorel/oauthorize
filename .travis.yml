@@ -6,11 +6,7 @@ jdk:
   - oraclejdk7
   - openjdk7
 env:
-  - SBT_OPTS="-XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -XX:PermSize=256M -XX:MaxPermSize=512M"
-  - APPLICATION_SECRET=a
-  - GOOGLE_CLIENT_ID=a
-  - GOOGLE_CLIENT_SECRET=a
-  - WITH_TEST_DATA=true
+  - APPLICATION_SECRET=a GOOGLE_CLIENT_ID=a GOOGLE_CLIENT_SECRET=a WITH_TEST_DATA=true SBT_OPTS="-XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -XX:PermSize=256M -XX:MaxPermSize=512M"
 branches:
   only:
     - master
