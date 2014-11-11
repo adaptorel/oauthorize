@@ -17,7 +17,7 @@ import scala.concurrent.duration._
 import oauth2.spec.ResponseType
 import play.api.Play
 import oauthorize.service.Oauth2Store
-import oauthorize.playapp.Oauth
+import oauthorize.sample.Oauth
 import oauth2.spec.GrantTypes
 
 @RunWith(classOf[JUnitRunner])

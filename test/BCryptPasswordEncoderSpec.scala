@@ -11,13 +11,13 @@ class BCryptPasswordEncoderSpec extends Specification {
 
   "The BCrypt encoder should" should {
 
-    val enc = new BCryptClientSecretHasher {}
+    val enc = new BCryptClientSecretHasher(10)
     s"fail if original encoded password doesn't match" in {
-      enc.clientSecretMatches("pass", SecretInfo("whateverpass")) must beFalse
+      enc.secretMatches("pass", SecretInfo("whateverpass")) must beFalse
     }
     s"encoded passwords should match" in {
-      val pass = enc.hashClientSecret(SecretInfo("pass"))
-      enc.clientSecretMatches("pass", pass) must beTrue
+      val pass = enc.hashSecret(SecretInfo("pass"))
+      enc.secretMatches("pass", pass) must beTrue
     }
   }
 }

@@ -26,7 +26,7 @@ class Sha256Hasher extends Hasher {
   }
 }
 
-class BCryptHasher(val rounds: Int = 10) extends Hasher {
+class BCryptHasher(val rounds: Int) extends Hasher {
   private val rnd = new SecureRandom
   private def paddedRounds = { rounds.toString.reverse.padTo(2, "0").reverse.mkString }
   private def prefix = "$2a$" + paddedRounds + "$"

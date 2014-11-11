@@ -1,7 +1,6 @@
 @(authzRequest: oauthorize.model.AuthzRequest, authzRequestJsonString: String, client: oauthorize.model.Oauth2Client, request: RequestHeader)
 @import oauth2.spec.Req
 @import oauthorize.grants.UserApproval
-@import oauthorize.playapp.Oauth
 @import oauthorize.playapp.csrf.{OauthorizeCsrf, OauthorizeCsrfConf}
 @oauthz.main(title = "User approval") {
   <h1>Application '@client.clientId' requires access to '@authzRequest.authScope'</h1>

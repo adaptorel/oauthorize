@@ -38,7 +38,7 @@ trait PlayLogging extends Logging {
 
 trait Oauth2DefaultsPlay extends Oauth2Defaults with PlayLogging with PlayExecutionContextProvider
 
-trait SecureSocialUserStore extends UserStore {
+class SecureSocialUserStore extends UserStore {
   import securesocial.core._
   override def getUser(id: UserId) = {
     UserService.find(IdentityId(id.value, id.provider.getOrElse("userpass")))
@@ -50,6 +50,8 @@ trait SecureSocialUserStore extends UserStore {
  * The default password hasher based on BCrypt.
  */
 class BCryptPasswordHasher(app: play.api.Application) extends PasswordHasher {
+  
+  import defaults._
 
   override def id = PasswordHasher.BCryptHasher
 
@@ -62,7 +64,7 @@ class BCryptPasswordHasher(app: play.api.Application) extends PasswordHasher {
    * @return a PasswordInfo containing the hashed password.
    */
   def hash(plainPassword: String): PasswordInfo = {
-    PasswordInfo(id, Oauth.hashUserSecret(SecretInfo(plainPassword)))
+    PasswordInfo(id, userPasswordHasher.hashSecret(SecretInfo(plainPassword)).secret)
   }
 
   /**
@@ -73,6 +75,6 @@ class BCryptPasswordHasher(app: play.api.Application) extends PasswordHasher {
    * @return true if the password matches, false otherwise.
    */
   def matches(passwordInfo: PasswordInfo, suppliedPassword: String): Boolean = {
-    Oauth.userPasswordMatches(suppliedPassword, SecretInfo(passwordInfo.password))
+    userPasswordHasher.secretMatches(suppliedPassword, SecretInfo(passwordInfo.password))
   }
 }

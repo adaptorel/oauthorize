@@ -7,64 +7,115 @@ import oauthorize.model._
 import oauthorize.service._
 import oauthorize.grants._
 import oauthorize.utils.BasicAuthentication
-import scala.concurrent.Future
 import json._
 import oauthorize.playapp.csrf._
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext
+import securesocial.core.SecureSocial
 
-trait Oauth2RequestValidatorPlay extends Oauth2BodyReaderFilter with Oauth2RequestValidator with RenderingUtils {
-  this: Oauth2Defaults with Oauth2Store with TokenGenerator =>
+class Oauth2RequestValidatorPlay(
+  config: Oauth2Config,
+  logger: Logging,
+  validator: Oauth2RequestValidator)
+  extends Oauth2BodyReaderFilter(logger) {
 
-  override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
-    logInfo(s"proceed with global validation at: $a")
-    getErrors(a).map(maybeErr => maybeErr.map(renderErrorAsResult(_)))
+  private val renderingImplicits = new RenderingUtils(config)
+
+  override def matches(r: OauthRequest) = validator.matches(r)
+  
+  override def bodyProcessor(a: OauthRequest, req: RequestHeader)(implicit ctx: ExecutionContext) = {
+    logger.logInfo(s"proceed with global validation at: $a")
+    validator.getErrors(a, ctx).map(maybeErr => maybeErr.map(renderingImplicits.renderErrorAsResult(_)))
   }
 }
 
-trait AccessTokenEndpointPlay extends Oauth2BodyReaderFilter with AccessTokenEndpoint with RenderingUtils {
-  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with TokenGenerator =>
+class AccessTokenEndpointPlay(
+  config: Oauth2Config,
+  logger: Logging,
+  processor: AccessTokenEndpoint) extends Oauth2BodyReaderFilter(logger) {
 
-  override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
-    Option(processAccessTokenRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
+  private val renderingImplicits = new RenderingUtils(config)
+  import renderingImplicits._
+
+  override def matches(r: OauthRequest) = processor.matches(r)
+  
+  override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader)(implicit ctx: ExecutionContext) = {
+    Option(processor.processAccessTokenRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
   }
 }
 
-trait RefreshTokenEndpointPlay extends Oauth2BodyReaderFilter with RefreshTokenEndpoint with RenderingUtils {
-  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with TokenGenerator =>
+class RefreshTokenEndpointPlay(
+  config: Oauth2Config,
+  logger: Logging,
+  processor: RefreshTokenEndpoint) extends Oauth2BodyReaderFilter(logger) {
 
-  override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
-    Option(processRefreshTokenRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
+  private val renderingImplicits = new RenderingUtils(config)
+  import renderingImplicits._
+  
+  override def matches(r: OauthRequest) = processor.matches(r)
+
+  override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader)(implicit ctx: ExecutionContext) = {
+    Option(processor.processRefreshTokenRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
   }
 }
 
-trait ClientCredentialsGrantPlay extends Oauth2BodyReaderFilter with ClientCredentialsGrant with RenderingUtils {
-  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with TokenGenerator =>
+class ClientCredentialsGrantPlay(
+  config: Oauth2Config,
+  logger: Logging,
+  processor: ClientCredentialsGrant) extends Oauth2BodyReaderFilter(logger) {
 
-  override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
-    Option(processClientCredentialsRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
+  private val renderingImplicits = new RenderingUtils(config)
+  import renderingImplicits._
+  
+  override def matches(r: OauthRequest) = processor.matches(r)
+
+  override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader)(implicit ctx: ExecutionContext) = {
+    Option(processor.processClientCredentialsRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
   }
 }
 
-trait AuthorizationCodePlay extends Oauth2BodyReaderFilter with AuthorizationCode with RenderingUtils {
-  this: Oauth2Defaults with Oauth2Store with TokenGenerator =>
+class AuthorizationCodePlay(
+  config: Oauth2Config,
+  logger: Logging,
+  processor: AuthorizationCode) extends Oauth2BodyReaderFilter(logger) {
 
-  override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
-    Option(processAuthorizeRequest(a).map(_.fold(err => err, good => WithCsrf(req, good))))
+  private val renderingImplicits = new RenderingUtils(config)
+  import renderingImplicits._
+  
+  override def matches(r: OauthRequest) = processor.matches(r)
+
+  override def bodyProcessor(a: OauthRequest, req: RequestHeader)(implicit ctx: ExecutionContext) = {
+    Option(processor.processAuthorizeRequest(a).map(_.fold(err => err, good => WithCsrf(req, good))))
   }
 }
 
-trait ResourceOwnerCredentialsGrantPlay extends Oauth2BodyReaderFilter with ResourceOwnerCredentialsGrant with RenderingUtils {
-  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with UserStore with UserPasswordHasher with TokenGenerator =>
+class ResourceOwnerCredentialsGrantPlay(
+  config: Oauth2Config,
+  logger: Logging,
+  processor: ResourceOwnerCredentialsGrant) extends Oauth2BodyReaderFilter(logger) {
 
-  override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader) = {
-    Option(processOwnerCredentialsRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
+  private val renderingImplicits = new RenderingUtils(config)
+  import renderingImplicits._
+  
+  override def matches(r: OauthRequest) = processor.matches(r)
+
+  override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader)(implicit ctx: ExecutionContext) = {
+    Option(processor.processOwnerCredentialsRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
   }
 }
 
-trait ImplicitGrantPlay extends Oauth2BodyReaderFilter with ImplicitGrant with RenderingUtils with securesocial.core.SecureSocial {
-  this: Oauth2Defaults with Oauth2Store with TokenGenerator =>
+class ImplicitGrantPlay(
+  config: Oauth2Config,
+  logger: Logging,
+  processor: ImplicitGrant) extends Oauth2BodyReaderFilter(logger) with securesocial.core.SecureSocial {
 
-  override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
-    def process(u: Oauth2User): SimpleResult = processImplicitRequest(a, u).fold(err => err, good => WithCsrf(req, good))
+  private val renderingImplicits = new RenderingUtils(config)
+  import renderingImplicits._
+  
+  override def matches(r: OauthRequest) = processor.matches(r)
+
+  override def bodyProcessor(a: OauthRequest, req: RequestHeader)(implicit ctx: ExecutionContext) = {
+    def process(u: Oauth2User): SimpleResult = processor.processImplicitRequest(a, u).fold(err => err, good => WithCsrf(req, good))
     Some(secureInvocation(process, req))
   }
 
@@ -74,8 +125,11 @@ trait ImplicitGrantPlay extends Oauth2BodyReaderFilter with ImplicitGrant with R
 
 }
 
-trait UserApprovalPlay extends Oauth2BodyReaderFilter with UserApproval with RenderingUtils with securesocial.core.SecureSocial {
-  this: Oauth2Defaults with Oauth2Store with TokenGenerator =>
+class UserApprovalPlay(
+  config: Oauth2Config,
+  logger: Logging,
+  store: Oauth2Store,
+  processor: UserApproval) extends Oauth2BodyReaderFilter(logger) with SecureSocial {
 
   import oauth2.spec.Req._
   import oauthorize.utils._
@@ -83,22 +137,24 @@ trait UserApprovalPlay extends Oauth2BodyReaderFilter with UserApproval with Ren
   import scala.concurrent.Await
   import scala.concurrent.duration._
 
-  override def unmarshal(authzRequestJsonString: String) = Json.parse(authzRequestJsonString).asOpt[AuthzRequest]
+  private val renderingImplicits = new RenderingUtils(config)
+  import renderingImplicits._
+  
+  override def matches(r: OauthRequest) = processor.matches(r)
 
-  override def bodyProcessor(a: OauthRequest, req: RequestHeader) = {
-    logInfo(s"processing user approval: $a");
-    def lazyResult(u: Oauth2User) ={
-      if ("POST" == a.method || a.param(UserApproval.AutoApproveKey).exists(_ == "true")){
+  override def bodyProcessor(a: OauthRequest, req: RequestHeader)(implicit ctx: ExecutionContext) = {
+    logger.logInfo(s"processing user approval: $a");
+    def lazyResult(u: Oauth2User) = {
+      if ("POST" == a.method || a.param(UserApproval.AutoApproveKey).exists(_ == "true")) {
         lazyProcessApprove(a, u, req)
-      }
-      else displayUserApprovalPage(a, req)
+      } else displayUserApprovalPage(a, req)
     }
     Some(secureInvocation(lazyResult, req))
   }
 
   private def lazyProcessApprove(a: OauthRequest, u: Oauth2User, req: RequestHeader): SimpleResult = {
     CsrfCheck(req, a) {
-      processApprove(a, u)
+      processor.processApprove(a, u)
     }.withSession(req.session - OauthorizeCsrfConf.TokenName)
   }
 
@@ -110,12 +166,12 @@ trait UserApprovalPlay extends Oauth2BodyReaderFilter with UserApproval with Ren
     implicit val request = req
     (for {
       authzRequestJsonString <- a.param(UserApproval.AuthzRequestKey)
-      authzReq <- unmarshal(authzRequestJsonString)
-      client <- getClient(authzReq.clientId)
+      authzReq <- processor.unmarshal(authzRequestJsonString)
+      client <- store.getClient(authzReq.clientId)
     } yield {
       buildUserApprovalPage(authzReq, authzRequestJsonString, client, req)
     }) getOrElse ({
-      logError("Fatal error when initiating user approval after user authentication! The authorization code, authorization request or the client weren't found. Shouldn't have got here EVER, we're controlling the whole flow!")
+      logger.logError("Fatal error when initiating user approval after user authentication! The authorization code, authorization request or the client weren't found. Shouldn't have got here EVER, we're controlling the whole flow!")
       err(server_error, 500)
     })
   }

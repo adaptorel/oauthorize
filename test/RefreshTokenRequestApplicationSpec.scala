@@ -10,7 +10,7 @@ import oauth2.spec.AccessTokenErrors._
 import oauth2.spec.Req._
 import oauth2.spec.GrantTypes
 import oauthorize.model._
-import oauthorize.playapp.Oauth
+import oauthorize.sample.Oauth
 import org.apache.commons.codec.binary.Base64
 import java.net.URLDecoder
 import java.net.URLEncoder

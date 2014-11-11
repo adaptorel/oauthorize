@@ -5,12 +5,11 @@ import oauthorize.model.OauthRequest
 import oauthorize.service.{Logging, Dispatcher}
 import play.api.libs.json.Json
 import play.api.mvc._
-
 import scala.concurrent.Future
+import scala.concurrent.ExecutionContext
 
-trait Oauth2BodyReaderFilter extends EssentialFilter {
-
-  this: Dispatcher with Logging =>
+abstract class Oauth2BodyReaderFilter(
+  val logger: Logging) extends Dispatcher with EssentialFilter {
 
   import json._
   import play.api.libs.iteratee.{ Enumerator, Done, Iteratee, Traversable }
@@ -25,7 +24,7 @@ trait Oauth2BodyReaderFilter extends EssentialFilter {
     }
   }
 
-  def bodyProcessor(a: OauthRequest, req: RequestHeader): Option[Future[SimpleResult]] = {
+  def bodyProcessor(a: OauthRequest, req: RequestHeader)(implicit ctx: ExecutionContext): Option[Future[SimpleResult]] = {
     Some(Future.successful(InternalServerError(Json.toJson(err(AuthzErrors.server_error, "Not implemented")))))
   }
 
@@ -38,7 +37,7 @@ trait Oauth2BodyReaderFilter extends EssentialFilter {
       val parsedBody = Enumerator(bytes) |>>> parser(request)
       Iteratee.flatten(parsedBody.flatMap { parseResult =>
         val bodyAsMap = parseResult.fold(
-          msg => { warn(msg.toString); Map[String, Seq[String]]() },
+          msg => { logger.warn(msg.toString); Map[String, Seq[String]]() },
           body => ({
             for {
               values <- extractor(body)
@@ -59,10 +58,10 @@ trait Oauth2BodyReaderFilter extends EssentialFilter {
       private val headers = request.headers
     }
     if (matches(r)) {
-      debug("found matching processor " + r + ": " + this)
+      logger.debug("found matching processor " + r + ": " + this)
       bodyProcessor(r, request).fold(next(nextAction, bytes, request))(f => f.map(Done(_)))
     } else {
-      debug("didn't find matching request, will just forward " + r + ": " + this)
+      logger.debug("didn't find matching request, will just forward " + r + ": " + this)
       next(nextAction, bytes, request)
     }
   }

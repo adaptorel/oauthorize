@@ -11,17 +11,17 @@ class Sha256PasswordEncoderSpec extends Specification {
 
   "The SHA256 encoder should" should {
 
-    val enc = new Sha256ClientSecretHasher {}
+    val enc = new Sha256ClientSecretHasher
     s"fail if original encoded password doesn't match" in {
-      enc.clientSecretMatches("pass", SecretInfo("whateverpass")) must beFalse
+      enc.secretMatches("pass", SecretInfo("whateverpass")) must beFalse
     }
     s"encoded passwords should match" in {
-      val pass = enc.hashClientSecret(SecretInfo("pass"))
-      enc.clientSecretMatches("pass", pass) must beTrue
+      val pass = enc.hashSecret(SecretInfo("pass"))
+      enc.secretMatches("pass", pass) must beTrue
     }
     s"encoded passwords with salt should match" in {
-      val pass = enc.hashClientSecret(SecretInfo("pass", Some("salt")))
-      enc.clientSecretMatches("pass", pass) must beTrue
+      val pass = enc.hashSecret(SecretInfo("pass", Some("salt")))
+      enc.secretMatches("pass", pass) must beTrue
     }
   }
 }
