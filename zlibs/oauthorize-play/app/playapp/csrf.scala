@@ -202,11 +202,11 @@ object OauthorizeCsrfConf {
 
   def c = current.configuration
 
-  def TokenName: String = c.getString("oauthorize.csrf.token.name").getOrElse("oauthorize_csrf_token")
-  def CookieName: Option[String] = c.getString("oauthorize.csrf.cookie.name")
-  def SecureCookie: Boolean = c.getBoolean("oauthorize.csrf.cookie.secure").getOrElse(Session.secure)
-  def PostBodyBuffer: Long = c.getBytes("oauthorize.csrf.body.bufferSize").getOrElse(102400L)
-  def SignTokens: Boolean = c.getBoolean("oauthorize.csrf.sign.tokens").getOrElse(true)
+  lazy val TokenName: String = c.getString("oauthorize.csrf.token.name").getOrElse("oauthorize_csrf_token")
+  lazy val CookieName: Option[String] = c.getString("oauthorize.csrf.cookie.name")
+  lazy val SecureCookie: Boolean = c.getBoolean("oauthorize.csrf.cookie.secure").getOrElse(Session.secure)
+  lazy val PostBodyBuffer: Long = c.getBytes("oauthorize.csrf.body.bufferSize").getOrElse(102400L)
+  lazy val SignTokens: Boolean = c.getBoolean("oauthorize.csrf.sign.tokens").getOrElse(true)
 
   def defaultCreateIfNotFound(request: RequestHeader) = {
     // If the request isn't accepting HTML, then it won't be rendering a form, so there's no point in generating a
