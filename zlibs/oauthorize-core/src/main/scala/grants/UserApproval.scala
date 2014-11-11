@@ -18,13 +18,15 @@ object UserApproval {
   val AutoApproveKey = "_auto"
 }
 
-trait UserApproval extends Dispatcher {
-  this: Oauth2Defaults with Oauth2Store with TokenGenerator =>
+abstract class UserApproval(
+  val config: Oauth2Config,
+  val store: Oauth2Store,
+  val tokens: TokenGenerator) extends Dispatcher {
 
   def unmarshal(authzRequestJsonString: String): Option[AuthzRequest]
 
   override def matches(r: OauthRequest) = {
-    val res = r.path == userApprovalEndpoint &&
+    val res = r.path == config.userApprovalEndpoint &&
       (r.method == "POST" || r.method == "GET")
     res
   }
@@ -33,7 +35,7 @@ trait UserApproval extends Dispatcher {
     (for {
       authzRequestJsonString <- req.param(UserApproval.AuthzRequestKey)
       authzReq <- unmarshal(authzRequestJsonString)
-      client <- getClient(authzReq.clientId)
+      client <- store.getClient(authzReq.clientId)
     } yield {
       if (isApproved(req, client)) {
         //we consider created 
@@ -60,9 +62,9 @@ trait UserApproval extends Dispatcher {
   import scala.collection.immutable.ListMap
   private def renderImplicitResponse(req: OauthRequest, oauthClient: Oauth2Client, authzRequest: AuthzRequest, user: Oauth2User) = {
     import oauth2.spec.AccessTokenResponseParams._
-    markForRemoval(authzRequest, None)// authz req not stored thus we have no code for implicit grant
-    val token = generateAccessToken(oauthClient, authzRequest.authScope, Option(user.id))
-    val stored = storeTokens(AccessAndRefreshTokens(token), oauthClient)
+    store.markForRemoval(authzRequest, None)// authz req not stored thus we have no code for implicit grant
+    val token = tokens.generateAccessToken(oauthClient, authzRequest.authScope, Option(user.id))
+    val stored = store.storeTokens(AccessAndRefreshTokens(token), oauthClient)
     val tmp = ListMap[String, String]() +
       (access_token -> stored.accessToken.value) +
       (token_type -> TokenType.bearer) +
@@ -73,8 +75,8 @@ trait UserApproval extends Dispatcher {
   }
 
   private def renderAuthzResponse(authzRequest: AuthzRequest, client: Oauth2Client, req: OauthRequest, u: Oauth2User) = {
-    val authzCode = generateCode(authzRequest)
-    storeAuthzRequest(authzCode, authzRequest.copy(user = Option(u), code = Option(authzCode)))
+    val authzCode = tokens.generateCode(authzRequest)
+    store.storeAuthzRequest(authzCode, authzRequest.copy(user = Option(u), code = Option(authzCode)))
     val tmp = Map(code -> authzCode)
     val params = authzRequest.state.map(s => tmp + (state -> s)).getOrElse(tmp)
     OauthRedirect(s"${client.redirectUri}", params)

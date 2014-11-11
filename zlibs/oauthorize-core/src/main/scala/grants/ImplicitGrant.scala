@@ -11,13 +11,13 @@ import oauthorize.model._
 import oauthorize.model.OauthRedirect
 import scala.collection.immutable.ListMap
 
-trait ImplicitGrant extends Dispatcher {
-
-  this: Oauth2Defaults with Oauth2Store =>
+class ImplicitGrant(
+  val config: Oauth2Config,
+  val store: Oauth2Store) extends Dispatcher {
 
   override def matches(r: OauthRequest) = {
     val res =
-      r.path == authorizeEndpoint &&
+      r.path == config.authorizeEndpoint &&
         r.method == "GET" &&
         r.param(Req.response_type).exists(_ == ResponseType.token)
     res
@@ -26,11 +26,11 @@ trait ImplicitGrant extends Dispatcher {
   def processImplicitRequest(req: OauthRequest, user: Oauth2User): Either[Err, OauthResponse] = {
     (req.param(client_id), req.param(response_type), req.param(redirect_uri), req.param(scope)) match {
       case (Some(clientId), Some(responseType), Some(redirectUri), Some(authzScope)) => {
-        getClient(clientId) match {
+        store.getClient(clientId) match {
           case None => Left(err(invalid_request, "unregistered client"))
           case Some(client) => {
             val authzRequest = AuthzRequest(None, clientId, responseType, redirectUri, authzScope.split(ScopeSeparator).toSeq,
-              client.autoapprove, authzCodeValiditySeconds, System.currentTimeMillis, req.param(state))
+              client.autoapprove, config.authzCodeValiditySeconds, System.currentTimeMillis, req.param(state))
             authzRequest.getError(client) match {
               case Some(err) => Left(err)
               case None => Right(InitiateAuthzApproval(authzRequest, client))
