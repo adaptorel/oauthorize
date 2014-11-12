@@ -21,15 +21,9 @@ object UserApproval {
 abstract class UserApproval(
   val config: Oauth2Config,
   val store: Oauth2Store,
-  val tokens: TokenGenerator) extends Dispatcher {
+  val tokens: TokenGenerator) {
 
   def unmarshal(authzRequestJsonString: String): Option[AuthzRequest]
-
-  override def matches(r: OauthRequest) = {
-    val res = r.path == config.userApprovalEndpoint &&
-      (r.method == "POST" || r.method == "GET")
-    res
-  }
 
   def processApprove(req: OauthRequest, u: Oauth2User): OauthRedirect = {
     (for {

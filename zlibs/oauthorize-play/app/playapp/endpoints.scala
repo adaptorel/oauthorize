@@ -1,17 +1,20 @@
 package oauthorize.playapp.grants
 
-import play.api.mvc._
-import play.api.mvc.Results._
-import play.api.libs.json.Json
-import oauthorize.model._
-import oauthorize.service._
-import oauthorize.grants._
-import oauthorize.utils.BasicAuthentication
-import json._
-import oauthorize.playapp.csrf._
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
-import securesocial.core.SecureSocial
+
+import oauth2.spec.AuthzErrors.server_error
+import oauth2.spec._
+import oauthorize.grants._
+import oauthorize.model._
+import oauthorize.playapp.csrf._
+import oauthorize.service._
+import oauthorize.utils._
+import play.api.mvc._
+import securesocial.core._
+
+trait RequestProcessor {
+  def shouldProcess(request: OauthRequest): Boolean
+}
 
 class Oauth2RequestValidatorPlay(
   config: Oauth2Config,
@@ -21,10 +24,14 @@ class Oauth2RequestValidatorPlay(
 
   private val renderingImplicits = new RenderingUtils(config)
 
-  override def matches(r: OauthRequest) = validator.matches(r)
-  
+  override def shouldProcess(request: OauthRequest) = {
+    request.path == config.authorizeEndpoint ||
+      request.path == config.accessTokenEndpoint ||
+      request.path == config.userApprovalEndpoint
+  }
+
   override def bodyProcessor(a: OauthRequest, req: RequestHeader)(implicit ctx: ExecutionContext) = {
-    logger.info(s"proceed with global validation at: $a")
+    logger.info(s"Proceed with global validation at: $a")
     validator.getErrors(a, ctx).map(maybeErr => maybeErr.map(renderingImplicits.renderErrorAsResult(_)))
   }
 }
@@ -37,8 +44,13 @@ class AccessTokenEndpointPlay(
   private val renderingImplicits = new RenderingUtils(config)
   import renderingImplicits._
 
-  override def matches(r: OauthRequest) = processor.matches(r)
-  
+  override def shouldProcess(r: OauthRequest) = {
+    val res = r.path == config.accessTokenEndpoint &&
+      r.method == "POST" &&
+      r.param(Req.grant_type).exists(_ == GrantTypes.authorization_code)
+    res
+  }
+
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader)(implicit ctx: ExecutionContext) = {
     Option(processor.processAccessTokenRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
   }
@@ -51,8 +63,13 @@ class RefreshTokenEndpointPlay(
 
   private val renderingImplicits = new RenderingUtils(config)
   import renderingImplicits._
-  
-  override def matches(r: OauthRequest) = processor.matches(r)
+
+  override def shouldProcess(r: OauthRequest) = {
+    val res = r.path == config.accessTokenEndpoint &&
+      r.method == "POST" &&
+      r.param(Req.grant_type).exists(_ == GrantTypes.refresh_token)
+    res
+  }
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader)(implicit ctx: ExecutionContext) = {
     Option(processor.processRefreshTokenRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
@@ -66,8 +83,13 @@ class ClientCredentialsGrantPlay(
 
   private val renderingImplicits = new RenderingUtils(config)
   import renderingImplicits._
-  
-  override def matches(r: OauthRequest) = processor.matches(r)
+
+  override def shouldProcess(r: OauthRequest) = {
+    val accepts = r.path == config.accessTokenEndpoint &&
+      r.method == "POST" &&
+      r.param(Req.grant_type).exists(_ == GrantTypes.client_credentials)
+    accepts
+  }
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader)(implicit ctx: ExecutionContext) = {
     Option(processor.processClientCredentialsRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
@@ -81,8 +103,13 @@ class AuthorizationCodePlay(
 
   private val renderingImplicits = new RenderingUtils(config)
   import renderingImplicits._
-  
-  override def matches(r: OauthRequest) = processor.matches(r)
+
+  override def shouldProcess(r: OauthRequest) = {
+    val res = r.path == config.authorizeEndpoint &&
+      r.method == "GET" &&
+      r.param(Req.response_type).exists(_ == ResponseType.code)
+    res
+  }
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader)(implicit ctx: ExecutionContext) = {
     Option(processor.processAuthorizeRequest(a).map(_.fold(err => err, good => WithCsrf(req, good))))
@@ -96,8 +123,13 @@ class ResourceOwnerCredentialsGrantPlay(
 
   private val renderingImplicits = new RenderingUtils(config)
   import renderingImplicits._
-  
-  override def matches(r: OauthRequest) = processor.matches(r)
+
+  override def shouldProcess(r: OauthRequest) = {
+    val res = r.path == config.accessTokenEndpoint &&
+      r.method == "POST" &&
+      r.param(Req.grant_type).exists(_ == GrantTypes.password)
+    res
+  }
 
   override def bodyProcessor(oauthRequest: OauthRequest, req: RequestHeader)(implicit ctx: ExecutionContext) = {
     Option(processor.processOwnerCredentialsRequest(oauthRequest, BasicAuthentication(oauthRequest)).map(_.fold(err => err, correct => correct)))
@@ -111,8 +143,14 @@ class ImplicitGrantPlay(
 
   private val renderingImplicits = new RenderingUtils(config)
   import renderingImplicits._
-  
-  override def matches(r: OauthRequest) = processor.matches(r)
+
+  override def shouldProcess(r: OauthRequest) = {
+    val res =
+      r.path == config.authorizeEndpoint &&
+        r.method == "GET" &&
+        r.param(Req.response_type).exists(_ == ResponseType.token)
+    res
+  }
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader)(implicit ctx: ExecutionContext) = {
     def process(u: Oauth2User): SimpleResult = processor.processImplicitRequest(a, u).fold(err => err, good => WithCsrf(req, good))
@@ -139,8 +177,12 @@ class UserApprovalPlay(
 
   private val renderingImplicits = new RenderingUtils(config)
   import renderingImplicits._
-  
-  override def matches(r: OauthRequest) = processor.matches(r)
+
+  override def shouldProcess(r: OauthRequest) = {
+    val res = r.path == config.userApprovalEndpoint &&
+      (r.method == "POST" || r.method == "GET")
+    res
+  }
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader)(implicit ctx: ExecutionContext) = {
     logger.info(s"processing user approval: $a");

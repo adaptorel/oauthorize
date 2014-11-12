@@ -13,15 +13,7 @@ import scala.collection.immutable.ListMap
 
 class ImplicitGrant(
   val config: Oauth2Config,
-  val store: Oauth2Store) extends Dispatcher {
-
-  override def matches(r: OauthRequest) = {
-    val res =
-      r.path == config.authorizeEndpoint &&
-        r.method == "GET" &&
-        r.param(Req.response_type).exists(_ == ResponseType.token)
-    res
-  }
+  val store: Oauth2Store) {
 
   def processImplicitRequest(req: OauthRequest, user: Oauth2User): Either[Err, OauthResponse] = {
     (req.param(client_id), req.param(response_type), req.param(redirect_uri), req.param(scope)) match {

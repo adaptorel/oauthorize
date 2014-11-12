@@ -2,14 +2,14 @@ package oauthorize.playapp.grants
 
 import oauth2.spec.AuthzErrors
 import oauthorize.model.OauthRequest
-import oauthorize.service.{Logging, Dispatcher}
+import oauthorize.service.Logging
 import play.api.libs.json.Json
 import play.api.mvc._
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 
 abstract class Oauth2BodyReaderFilter(
-  val logger: Logging) extends Dispatcher with EssentialFilter {
+  val logger: Logging) extends RequestProcessor with EssentialFilter {
 
   import json._
   import play.api.libs.iteratee.{ Enumerator, Done, Iteratee, Traversable }
@@ -57,11 +57,11 @@ abstract class Oauth2BodyReaderFilter(
       override val params = bodyAndQueryStringAsMap.map(x => (x._1 -> x._2.mkString))
       private val headers = request.headers
     }
-    if (matches(r)) {
-      logger.debug("found matching processor " + r + ": " + this)
+    if (shouldProcess(r)) {
+      logger.debug("Found matching processor " + r + ": " + this)
       bodyProcessor(r, request).fold(next(nextAction, bytes, request))(f => f.map(Done(_)))
     } else {
-      logger.debug("didn't find matching request, will just forward " + r + ": " + this)
+      logger.debug("Didn't find matching request, will just forward " + r + ": " + this)
       next(nextAction, bytes, request)
     }
   }

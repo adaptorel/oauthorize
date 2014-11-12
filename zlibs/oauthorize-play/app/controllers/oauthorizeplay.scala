@@ -1,20 +1,21 @@
 package oauthorize.playapp
 
-import securesocial.core._
-import securesocial.core.providers.utils._
-import play.api.mvc.Results.InternalServerError
-import play.api.mvc.RequestHeader
-import play.api.GlobalSettings
-import oauthorize.service._
+import scala.concurrent.Future
+
+import defaults._
+import grants.json._
+import oauth2.spec._
 import oauthorize.model._
-import models._
+import oauthorize.service._
+import oauthorize.utils.err
+import play.api._
+import play.api.libs.json.Json
+import play.api.mvc.RequestHeader
+import play.api.mvc.Results._
+import securesocial.core._
+import securesocial.core.providers.utils.PasswordHasher
 
 trait Oauth2GlobalErorrHandler extends GlobalSettings {
-  import oauthorize.utils.err
-  import oauth2.spec._
-  import grants.json._
-  import scala.concurrent.Future
-  import play.api.libs.json.Json
   override def onError(request: RequestHeader, ex: Throwable) = {
     val resp = err(AccessTokenErrors.server_error, "internal server error", StatusCodes.InternalServerError)
     Future.successful(InternalServerError(Json.toJson(resp)))
@@ -36,8 +37,6 @@ trait PlayLogging extends Logging {
   override def error(message: String, t: Throwable) = if (oauthorizeLogger.isErrorEnabled) oauthorizeLogger.error(message, t)
 }
 
-trait Oauth2DefaultsPlay extends Oauth2Defaults with PlayLogging with PlayExecutionContextProvider
-
 class SecureSocialUserStore extends UserStore {
   import securesocial.core._
   override def getUser(id: UserId) = {
@@ -46,34 +45,16 @@ class SecureSocialUserStore extends UserStore {
   }
 }
 
-/**
- * The default password hasher based on BCrypt.
- */
 class BCryptPasswordHasher(app: play.api.Application) extends PasswordHasher {
   
   import defaults._
 
   override def id = PasswordHasher.BCryptHasher
 
-  /**
-   * Hashes a password. This implementation does not return the salt because it is not needed
-   * to verify passwords later.  Other implementations might need to return it so it gets saved in the
-   * backing store.
-   *
-   * @param plainPassword the password to hash
-   * @return a PasswordInfo containing the hashed password.
-   */
   def hash(plainPassword: String): PasswordInfo = {
     PasswordInfo(id, userPasswordHasher.hashSecret(SecretInfo(plainPassword)).secret)
   }
 
-  /**
-   * Checks if a password matches the hashed version
-   *
-   * @param passwordInfo the password retrieved from the backing store (by means of UserService)
-   * @param suppliedPassword the password supplied by the user trying to log in
-   * @return true if the password matches, false otherwise.
-   */
   def matches(passwordInfo: PasswordInfo, suppliedPassword: String): Boolean = {
     userPasswordHasher.secretMatches(suppliedPassword, SecretInfo(passwordInfo.password))
   }

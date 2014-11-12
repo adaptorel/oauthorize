@@ -38,16 +38,10 @@ trait Logging {
   def error(message: String, t: Throwable)
 }
 
-trait Dispatcher {
-  def matches(request: OauthRequest): Boolean
-}
-
 trait ExecutionContextProvider {
   import scala.concurrent.ExecutionContext
   implicit def oauthExecutionContext: ExecutionContext
 }
-
-trait Oauth2Defaults extends Oauth2Config with ExecutionContextProvider with Logging
 
 trait UserStore {
   def getUser(id: UserId): Option[Oauth2User]

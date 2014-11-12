@@ -14,15 +14,8 @@ class AccessTokenEndpoint(
   val config: Oauth2Config,
   val store: Oauth2Store,
   val hasher: ClientSecretHasher,
-  val tokens: TokenGenerator) extends Dispatcher {
+  val tokens: TokenGenerator) {
 
-  override def matches(r: OauthRequest) = {
-    val res = r.path == config.accessTokenEndpoint &&
-      r.method == "POST" &&
-      r.param(Req.grant_type).exists(_ == GrantTypes.authorization_code)
-    res
-  }
-    
   def processAccessTokenRequest(req: OauthRequest, clientAuth: Option[ClientAuthentication])(implicit ctx: ExecutionContext): Future[Either[Err, AccessTokenResponse]] = Future {
 
     clientAuth match {

@@ -14,14 +14,7 @@ class RefreshTokenEndpoint(
   val config: Oauth2Config,
   val store: Oauth2Store,
   val hasher: ClientSecretHasher,
-  val tokens: TokenGenerator) extends Dispatcher {
-
-  override def matches(r: OauthRequest) = {
-    val res = r.path == config.accessTokenEndpoint &&
-      r.method == "POST" &&
-      r.param(Req.grant_type).exists(_ == GrantTypes.refresh_token)
-    res
-  }
+  val tokens: TokenGenerator) {
 
   def processRefreshTokenRequest(req: OauthRequest, clientAuth: Option[ClientAuthentication])(implicit ctx: ExecutionContext): Future[Either[Err, AccessTokenResponse]] = Future {
 

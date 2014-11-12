@@ -9,13 +9,7 @@ import scala.concurrent.ExecutionContext
 
 class Oauth2RequestValidator(
   val config: Oauth2Config,
-  val logger: Logging) extends Dispatcher {
-
-  override def matches(request: OauthRequest) = {
-    request.path == config.authorizeEndpoint ||
-      request.path == config.accessTokenEndpoint ||
-      request.path == config.userApprovalEndpoint
-  }
+  val logger: Logging) {
 
   def getErrors(implicit r: OauthRequest, ctx: ExecutionContext): Option[Future[Err]] = {
     logger.debug("Global validation for: " + r)

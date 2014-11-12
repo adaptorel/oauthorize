@@ -12,14 +12,7 @@ import scala.concurrent.ExecutionContext
 
 class AuthorizationCode(
   val config: Oauth2Config,
-  val store: Oauth2Store) extends Dispatcher {
-
-  override def matches(r: OauthRequest) = {
-    val res = r.path == config.authorizeEndpoint &&
-      r.method == "GET" &&
-      r.param(Req.response_type).exists(_ == ResponseType.code)
-    res
-  }
+  val store: Oauth2Store) {
 
   def processAuthorizeRequest(req: OauthRequest)(implicit ctx: ExecutionContext): Future[Either[Err, OauthResponse]] = Future {
     (req.param(client_id), req.param(response_type), req.param(redirect_uri)) match {

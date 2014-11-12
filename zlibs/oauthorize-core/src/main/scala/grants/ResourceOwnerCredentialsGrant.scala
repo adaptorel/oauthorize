@@ -16,14 +16,7 @@ class ResourceOwnerCredentialsGrant(
   val clientSecretHasher: ClientSecretHasher,
   val userStore: UserStore,
   val userPasswordHasher: UserPasswordHasher,
-  val tokens: TokenGenerator) extends Dispatcher {
-
-  override def matches(r: OauthRequest) = {
-    val res = r.path == config.accessTokenEndpoint &&
-      r.method == "POST" &&
-      r.param(Req.grant_type).exists(_ == GrantTypes.password)
-    res
-  }
+  val tokens: TokenGenerator) {
 
   def processOwnerCredentialsRequest(req: OauthRequest, clientAuth: Option[ClientAuthentication])(implicit ctx: ExecutionContext): Future[Either[Err, AccessTokenResponse]] = Future {
 

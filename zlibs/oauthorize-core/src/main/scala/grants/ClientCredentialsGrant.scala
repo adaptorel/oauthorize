@@ -14,16 +14,7 @@ class ClientCredentialsGrant(
   val config: Oauth2Config,
   val store: Oauth2Store,
   val hasher: ClientSecretHasher,
-  val tokens: TokenGenerator) extends Dispatcher {
-
-  //this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with TokenGenerator =>
-
-  override def matches(r: OauthRequest) = {
-    val accepts = r.path == config.accessTokenEndpoint &&
-      r.method == "POST" &&
-      r.param(Req.grant_type).exists(_ == GrantTypes.client_credentials)
-    accepts
-  }
+  val tokens: TokenGenerator) {
 
   def processClientCredentialsRequest(req: OauthRequest, clientAuth: Option[ClientAuthentication])(implicit ctx: ExecutionContext): Future[Either[Err, AccessTokenResponse]] = Future {
 
