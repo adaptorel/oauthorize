@@ -10,6 +10,7 @@ import play.api.libs.Crypto
 import play.filters.csrf.CSRFFilter
 import play.filters.csrf.CSRF.{ TokenProvider, SignedTokenProvider, UnsignedTokenProvider }
 import OauthorizeCsrf._
+import scala.concurrent.Future
 
 /**
  * Adding the CSRF token value to the InitialAuthzApproval, only if the client
@@ -34,7 +35,7 @@ object WithCsrf {
 }
 
 object CsrfCheck {
-  def apply(req: RequestHeader, a: OauthRequest)(block: => OauthResponse): OauthResponse = {
+  def apply(req: RequestHeader, a: OauthRequest)(block: => Future[OauthResponse]): Future[OauthResponse] = {
     /*
      * ONLY perform the check if there's a token in the session which
      * means the filter is enabled

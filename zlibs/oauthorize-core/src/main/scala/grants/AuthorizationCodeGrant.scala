@@ -14,10 +14,10 @@ class AuthorizationCode(
   val config: Oauth2Config,
   val store: Oauth2Store) {
 
-  def processAuthorizeRequest(req: OauthRequest)(implicit ctx: ExecutionContext): Future[Either[Err, OauthResponse]] = Future {
+  def processAuthorizeRequest(req: OauthRequest)(implicit ctx: ExecutionContext): Future[Either[Err, OauthResponse]] = {
     (req.param(client_id), req.param(response_type), req.param(redirect_uri)) match {
       case (Some(clientId), Some(responseType), Some(redirectUri)) => {
-        store.getClient(clientId) match {
+        store.getClient(clientId) map {
           case None => Left(err(invalid_request, "unregistered client"))
           case Some(client) => {
             val scopes = req.param(scope).map(_.split(ScopeSeparator).toSeq).getOrElse(Seq())
@@ -38,7 +38,7 @@ class AuthorizationCode(
           }
         }
       }
-      case _ => Left(err(invalid_request, s"mandatory: $client_id, $response_type, $redirect_uri, $scope"))
+      case _ => Future.successful(Left(err(invalid_request, s"mandatory: $client_id, $response_type, $redirect_uri, $scope")))
     }
   }
 }

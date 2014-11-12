@@ -1,7 +1,6 @@
 package oauthorize.playapp.grants
 
 import scala.concurrent.ExecutionContext
-
 import oauth2.spec.AuthzErrors.server_error
 import oauth2.spec._
 import oauthorize.grants._
@@ -11,6 +10,7 @@ import oauthorize.service._
 import oauthorize.utils._
 import play.api.mvc._
 import securesocial.core._
+import scala.concurrent.Future
 
 trait RequestProcessor {
   def shouldProcess(request: OauthRequest): Boolean
@@ -153,12 +153,16 @@ class ImplicitGrantPlay(
   }
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader)(implicit ctx: ExecutionContext) = {
-    def process(u: Oauth2User): SimpleResult = processor.processImplicitRequest(a, u).fold(err => err, good => WithCsrf(req, good))
+    def process(u: Oauth2User): Future[SimpleResult] =
+      processor.processImplicitRequest(a, u) map {
+        case Left(err) => err
+        case Right(good) => WithCsrf(req, good)
+      }
     Some(secureInvocation(process, req))
   }
 
-  private def secureInvocation(block: (Oauth2User) => Result, req: RequestHeader) = {
-    (SecuredAction { implicit r => block(UserExtractor(r)) })(req).run
+  private def secureInvocation(block: (Oauth2User) => Future[SimpleResult], req: RequestHeader) = {
+    (SecuredAction.async { implicit r => block(UserExtractor(r)) })(req).run
   }
 
 }
@@ -185,7 +189,8 @@ class UserApprovalPlay(
   }
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader)(implicit ctx: ExecutionContext) = {
-    logger.info(s"processing user approval: $a");
+    
+    logger.info(s"Processing user approval: $a");
     def lazyResult(u: Oauth2User) = {
       if ("POST" == a.method || a.param(UserApproval.AutoApproveKey).exists(_ == "true")) {
         lazyProcessApprove(a, u, req)
@@ -194,32 +199,49 @@ class UserApprovalPlay(
     Some(secureInvocation(lazyResult, req))
   }
 
-  private def lazyProcessApprove(a: OauthRequest, u: Oauth2User, req: RequestHeader): SimpleResult = {
+  private def lazyProcessApprove(
+    a: OauthRequest,
+    u: Oauth2User,
+    req: RequestHeader)(implicit ctx: ExecutionContext): Future[SimpleResult] = {
+    
     CsrfCheck(req, a) {
       processor.processApprove(a, u)
-    }.withSession(req.session - OauthorizeCsrfConf.TokenName)
+    } map (_.withSession(req.session - OauthorizeCsrfConf.TokenName))
   }
 
-  def buildUserApprovalPage(authzReq: AuthzRequest, authzRequestJsonString: String, client: Oauth2Client, req: RequestHeader): SimpleResult = {
+  def buildUserApprovalPage(
+    authzReq: AuthzRequest,
+    authzRequestJsonString: String,
+    client: Oauth2Client,
+    req: RequestHeader): SimpleResult = {
+    
     Ok(views.html.oauthz.user_approval(authzReq, authzRequestJsonString, client, req))
   }
 
-  private def displayUserApprovalPage(a: OauthRequest, req: RequestHeader): SimpleResult = {
+  private def displayUserApprovalPage(
+    a: OauthRequest,
+    req: RequestHeader)(implicit ctx: ExecutionContext): Future[SimpleResult] = {
+    
     implicit val request = req
     (for {
       authzRequestJsonString <- a.param(UserApproval.AuthzRequestKey)
       authzReq <- processor.unmarshal(authzRequestJsonString)
-      client <- store.getClient(authzReq.clientId)
     } yield {
-      buildUserApprovalPage(authzReq, authzRequestJsonString, client, req)
+      store.getClient(authzReq.clientId) map {
+        case None => throw new IllegalStateException("Process approval failure because of inexistsent Oauth2 client")
+        case Some(client) => buildUserApprovalPage(authzReq, authzRequestJsonString, client, req)
+      }
     }) getOrElse ({
-      logger.error("Fatal error when initiating user approval after user authentication! The authorization code, authorization request or the client weren't found. Shouldn't have got here EVER, we're controlling the whole flow!")
-      err(server_error, 500)
+      logger.error(
+        """Fatal error when initiating user approval after user authentication!
+          The authorization code, authorization request or the client weren't found.
+          Shouldn't have got here EVER, we're controlling the whole flow!""")
+      Future.successful(err(server_error, 500))
     })
   }
 
-  private def secureInvocation(block: (Oauth2User) => Result, req: RequestHeader) = {
-    (SecuredAction { implicit r => block(UserExtractor(r)) })(req).run
+  private def secureInvocation(block: (Oauth2User) => Future[SimpleResult], req: RequestHeader) = {
+    (SecuredAction.async { implicit r => block(UserExtractor(r)) })(req).run
   }
 }
 

@@ -6,20 +6,21 @@ import oauthorize.hash._
 import java.util.UUID
 import java.security.SecureRandom
 import org.mindrot.jbcrypt.BCrypt
+import scala.concurrent.{ Future, ExecutionContext }
 
 trait ClientSecretHasher extends SecretHasher
 class Sha256ClientSecretHasher extends HasherDelegate(new Sha256Hasher) with ClientSecretHasher
 class BCryptClientSecretHasher(val rounds: Int) extends HasherDelegate(new BCryptHasher(rounds)) with ClientSecretHasher
 
 trait Oauth2Store {
-  def storeClient(client: Oauth2Client): Oauth2Client
-  def getClient(clientId: String): Option[Oauth2Client]
-  def storeAuthzRequest(authzCode: String, authzRequest: AuthzRequest): AuthzRequest
-  def getAuthzRequest(authzCode: String): Option[AuthzRequest]
-  def storeTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client): AccessAndRefreshTokens
-  def getAccessToken(value: String): Option[AccessToken]
-  def getRefreshToken(value: String): Option[RefreshToken]
-  def markForRemoval(item: Expirable, key: Option[String])
+  def storeClient(client: Oauth2Client)(implicit ec: ExecutionContext): Future[Oauth2Client]
+  def getClient(clientId: String)(implicit ec: ExecutionContext): Future[Option[Oauth2Client]]
+  def storeAuthzRequest(authzCode: String, authzRequest: AuthzRequest)(implicit ec: ExecutionContext): Future[AuthzRequest]
+  def getAuthzRequest(authzCode: String)(implicit ec: ExecutionContext): Future[Option[AuthzRequest]]
+  def storeTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client)(implicit ec: ExecutionContext): Future[AccessAndRefreshTokens]
+  def getAccessToken(value: String)(implicit ec: ExecutionContext): Future[Option[AccessToken]]
+  def getRefreshToken(value: String)(implicit ec: ExecutionContext): Future[Option[RefreshToken]]
+  def markForRemoval(item: Expirable, key: Option[String])(implicit ec: ExecutionContext): Future[Unit]
 }
 
 trait Oauth2Config {
@@ -89,18 +90,34 @@ class InMemoryStoreDelegate extends Oauth2Store {
   private val accessTokenStore = scala.collection.mutable.Map[String, AccessToken]()
   private val refreshTokenStore = scala.collection.mutable.Map[String, RefreshToken]()
 
-  override def storeClient(client: Oauth2Client) = { oauthClientStore.put(client.clientId, client); client }
-  override def getClient(clientId: String) = oauthClientStore.get(clientId)
-  override def storeAuthzRequest(authzCode: String, authzRequest: AuthzRequest) = { authzCodeStore.put(authzCode, authzRequest); authzRequest }
-  override def getAuthzRequest(authzCode: String) = authzCodeStore.get(authzCode)
-  override def storeTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client) = {
+  override def storeClient(client: Oauth2Client)(implicit ec: ExecutionContext) = Future {
+    oauthClientStore.put(client.clientId, client); client
+  }
+  override def getClient(clientId: String)(implicit ec: ExecutionContext) = Future {
+    oauthClientStore.get(clientId)
+  }
+  override def storeAuthzRequest(
+    authzCode: String,
+    authzRequest: AuthzRequest)(implicit ec: ExecutionContext) = Future {
+    authzCodeStore.put(authzCode, authzRequest); authzRequest
+  }
+  override def getAuthzRequest(authzCode: String)(implicit ec: ExecutionContext) = Future {
+    authzCodeStore.get(authzCode)
+  }
+  override def storeTokens(
+    accessAndRefreshTokens: AccessAndRefreshTokens,
+    oauthClient: Oauth2Client)(implicit ec: ExecutionContext) = Future {
     accessTokenStore.put(accessAndRefreshTokens.accessToken.value, accessAndRefreshTokens.accessToken)
     accessAndRefreshTokens.refreshToken.foreach(t => refreshTokenStore.put(t.value, t))
     accessAndRefreshTokens
   }
-  override def getAccessToken(value: String) = accessTokenStore.find(t => t._1 == value).map(_._2)
-  override def getRefreshToken(value: String) = refreshTokenStore.find(t => t._1 == value).map(_._2)
-  override def markForRemoval(item: Expirable, key: Option[String]) = {
+  override def getAccessToken(value: String)(implicit ec: ExecutionContext) = Future {
+    accessTokenStore.find(t => t._1 == value).map(_._2)
+  }
+  override def getRefreshToken(value: String)(implicit ec: ExecutionContext) = Future {
+    refreshTokenStore.find(t => t._1 == value).map(_._2)
+  }
+  override def markForRemoval(item: Expirable, key: Option[String])(implicit ec: ExecutionContext) = Future {
     item match {
       case ar: AuthzRequest => key.foreach(authzCodeStore.remove(_))
       case at: AccessToken => accessTokenStore.remove(at.value)
@@ -114,12 +131,18 @@ private object DefaultInMemoryStoreDelegate extends InMemoryStoreDelegate
 
 class InMemoryOauth2Store extends Oauth2Store {
   lazy val delegate: Oauth2Store = DefaultInMemoryStoreDelegate
-  override def storeClient(client: Oauth2Client) = delegate.storeClient(client)
-  override def getClient(clientId: String) = delegate.getClient(clientId)
-  override def storeAuthzRequest(authzCode: String, authzRequest: AuthzRequest) = delegate.storeAuthzRequest(authzCode, authzRequest)
-  override def getAuthzRequest(authzCode: String) = delegate.getAuthzRequest(authzCode)
-  override def storeTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client) = delegate.storeTokens(accessAndRefreshTokens, oauthClient)
-  override def getAccessToken(value: String) = delegate.getAccessToken(value)
-  override def getRefreshToken(value: String) = delegate.getRefreshToken(value)
-  override def markForRemoval(item: Expirable, key: Option[String]) = delegate.markForRemoval(item, key)
+  override def storeClient(client: Oauth2Client)(implicit ec: ExecutionContext) = delegate.storeClient(client)
+  override def getClient(clientId: String)(implicit ec: ExecutionContext) = delegate.getClient(clientId)
+  override def storeAuthzRequest(
+    authzCode: String,
+    authzRequest: AuthzRequest)(implicit ec: ExecutionContext) = delegate.storeAuthzRequest(authzCode, authzRequest)
+  override def getAuthzRequest(authzCode: String)(implicit ec: ExecutionContext) = delegate.getAuthzRequest(authzCode)
+  override def storeTokens(
+    accessAndRefreshTokens: AccessAndRefreshTokens,
+    oauthClient: Oauth2Client)(implicit ec: ExecutionContext) = delegate.storeTokens(accessAndRefreshTokens, oauthClient)
+  override def getAccessToken(value: String)(implicit ec: ExecutionContext) = delegate.getAccessToken(value)
+  override def getRefreshToken(value: String)(implicit ec: ExecutionContext) = delegate.getRefreshToken(value)
+  override def markForRemoval(
+    item: Expirable,
+    key: Option[String])(implicit ec: ExecutionContext) = delegate.markForRemoval(item, key)
 }

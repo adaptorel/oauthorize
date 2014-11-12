@@ -16,42 +16,48 @@ class RefreshTokenEndpoint(
   val hasher: ClientSecretHasher,
   val tokens: TokenGenerator) {
 
-  def processRefreshTokenRequest(req: OauthRequest, clientAuth: Option[ClientAuthentication])(implicit ctx: ExecutionContext): Future[Either[Err, AccessTokenResponse]] = Future {
+  def processRefreshTokenRequest(
+    req: OauthRequest,
+    clientAuth: Option[ClientAuthentication])(implicit ctx: ExecutionContext): Future[Either[Err, AccessTokenResponse]] = {
 
     clientAuth match {
-      case None => Left(err(unauthorized_client, "unauthorized client", StatusCodes.Unauthorized))
-      case Some(basicAuth) => store.getClient(basicAuth.clientId) match {
-        case None => Left(err(invalid_client, "unregistered client", StatusCodes.Unauthorized))
-        case Some(client) if (!hasher.secretMatches(basicAuth.clientSecret, client.secretInfo)) => Left(err(invalid_client, "bad credentials", StatusCodes.Unauthorized))
+      case None => error(unauthorized_client, "unauthorized client", StatusCodes.Unauthorized)
+      case Some(basicAuth) => store.getClient(basicAuth.clientId) flatMap {
+        case None => error(invalid_client, "unregistered client", StatusCodes.Unauthorized)
+        case Some(client) if (!hasher.secretMatches(basicAuth.clientSecret, client.secretInfo)) => error(invalid_client, "bad credentials", StatusCodes.Unauthorized)
         case Some(client) => {
           (req.param(grant_type), req.param(refresh_token)) match {
             case (Some(grantType), Some(refreshToken)) => {
               val atRequest = RefreshTokenRequest(grantType, refreshToken)
-              processRefreshTokenRequest(atRequest, client)
-            } case _ => Left(err(invalid_request, s"mandatory: $grant_type, $refresh_token"))
+              doProcess(atRequest, client)
+            } case _ => error(invalid_request, s"mandatory: $grant_type, $refresh_token")
           }
         }
       }
     }
   }
 
-  private def processRefreshTokenRequest(refreshTokenRequest: RefreshTokenRequest, oauthClient: Oauth2Client): Either[Err, AccessTokenResponse] = {
+  private def doProcess(
+    refreshTokenRequest: RefreshTokenRequest,
+    oauthClient: Oauth2Client)(implicit ctx: ExecutionContext): Future[Either[Err, AccessTokenResponse]] = {
     import oauth2.spec.AccessTokenErrors._
 
     refreshTokenRequest.getError(oauthClient) match {
-      case Some(error) => Left(error)
-      case None => store.getRefreshToken(refreshTokenRequest.refreshToken) match {
-        case None => Left(err(invalid_grant, "invalid refresh token"))
-        case Some(refreshToken) if (refreshToken.isExpired) => Left(err(invalid_grant, "refresh token expired"))
+      case Some(error) => Future.successful(Left(error))
+      case None => store.getRefreshToken(refreshTokenRequest.refreshToken) flatMap {
+        case None => error(invalid_grant, "invalid refresh token")
+        case Some(refreshToken) if (refreshToken.isExpired) => error(invalid_grant, "refresh token expired")
         case Some(refreshToken) => {
-          /*
-             * TODO do we care about any previously stored data since he's started
-             * the flow from the beginning, with the authorization code and everything?
-             */
           val accessToken = tokens.generateAccessToken(oauthClient, refreshToken.tokenScope, refreshToken.userId)
-          val stored = store.storeTokens(AccessAndRefreshTokens(accessToken, None), oauthClient)
-          val response = AccessTokenResponse(stored.accessToken.value, stored.refreshToken.map(_.value), TokenType.bearer, stored.accessToken.validity, refreshToken.tokenScope.mkString(ScopeSeparator))
-          Right(response)
+          store.storeTokens(AccessAndRefreshTokens(accessToken, None), oauthClient) map { stored =>
+            val response = AccessTokenResponse(
+              stored.accessToken.value,
+              stored.refreshToken.map(_.value),
+              TokenType.bearer,
+              stored.accessToken.validity,
+              refreshToken.tokenScope.mkString(ScopeSeparator))
+            Right(response)
+          }
         }
       }
     }
