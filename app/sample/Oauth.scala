@@ -1,7 +1,7 @@
 package oauthorize.sample
 
 import oauthorize.model._
-import oauthorize.playapp.defaults._
+import oauthorize.playapp.oauth2provider._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Await
 import scala.concurrent.duration._

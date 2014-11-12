@@ -19,12 +19,15 @@ object UserApproval {
   val AutoApproveKey = "_auto"
 }
 
-abstract class UserApproval(
+trait AuthzDeserializer {
+  def fromJson(authzRequestJsonString: String): Option[AuthzRequest]
+}
+
+class UserApproval(
   val config: Oauth2Config,
   val store: Oauth2Store,
-  val tokens: TokenGenerator) {
-
-  def unmarshal(authzRequestJsonString: String): Option[AuthzRequest]
+  val tokens: TokenGenerator,
+  val deserializer: AuthzDeserializer) {
 
   def processApprove(
     req: OauthRequest,
@@ -32,7 +35,7 @@ abstract class UserApproval(
 
     (for {
       authzRequestJsonString <- req.param(UserApproval.AuthzRequestKey)
-      authzReq <- unmarshal(authzRequestJsonString)
+      authzReq <- deserializer.fromJson(authzRequestJsonString)
     } yield {
       store.getClient(authzReq.clientId) flatMap {
         case None => throw new IllegalStateException("Process approval failure because of inexistsent Oauth2 client")

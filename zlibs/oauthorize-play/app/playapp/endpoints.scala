@@ -225,7 +225,7 @@ class UserApprovalPlay(
     implicit val request = req
     (for {
       authzRequestJsonString <- a.param(UserApproval.AuthzRequestKey)
-      authzReq <- processor.unmarshal(authzRequestJsonString)
+      authzReq <- processor.deserializer.fromJson(authzRequestJsonString)
     } yield {
       store.getClient(authzReq.clientId) map {
         case None => throw new IllegalStateException("Process approval failure because of inexistsent Oauth2 client")

@@ -2,16 +2,18 @@ package oauthorize.playapp
 
 import scala.concurrent.Future
 
-import defaults._
 import grants.json._
 import oauth2.spec._
+import oauth2provider._
+import oauthorize.grants.AuthzDeserializer
 import oauthorize.model._
+import oauthorize.playapp.grants.json._
 import oauthorize.service._
-import oauthorize.utils.err
+import oauthorize.utils._
 import play.api._
 import play.api.libs.json.Json
 import play.api.mvc.RequestHeader
-import play.api.mvc.Results._
+import play.api.mvc.Results.InternalServerError
 import securesocial.core._
 import securesocial.core.providers.utils.PasswordHasher
 
@@ -26,7 +28,11 @@ trait PlayExecutionContextProvider extends ExecutionContextProvider {
   override val oauthExecutionContext = play.api.libs.concurrent.Execution.Implicits.defaultContext
 }
 
-trait PlayLogging extends Logging {
+class PlayOauth2Config extends Oauth2Config {
+  //read stuff from conf if needed
+}
+
+class PlayLogging extends Logging {
   import play.api.Logger
   lazy val oauthorizeLogger = Logger("oauthorize")
 
@@ -35,6 +41,14 @@ trait PlayLogging extends Logging {
   override def info(message: String) = if (oauthorizeLogger.isInfoEnabled) oauthorizeLogger.info(message)
   override def error(message: String) = if (oauthorizeLogger.isErrorEnabled) oauthorizeLogger.error(message)
   override def error(message: String, t: Throwable) = if (oauthorizeLogger.isErrorEnabled) oauthorizeLogger.error(message, t)
+}
+
+class JsonAuthzDeserializer extends AuthzDeserializer {
+  import play.api.libs.json.Json
+  import oauthorize.model._
+  import oauthorize.playapp.grants.json._
+  override def fromJson(authzRequestJsonString: String) =
+    Json.parse(authzRequestJsonString).asOpt[AuthzRequest]
 }
 
 class SecureSocialUserStore extends UserStore {
@@ -47,8 +61,6 @@ class SecureSocialUserStore extends UserStore {
 
 class BCryptPasswordHasher(app: play.api.Application) extends PasswordHasher {
   
-  import defaults._
-
   override def id = PasswordHasher.BCryptHasher
 
   def hash(plainPassword: String): PasswordInfo = {
