@@ -2,27 +2,15 @@ package oauthorize.service
 
 import oauthorize.utils._
 import oauthorize.model._
+import oauthorize.hash._
 import java.util.UUID
 import java.security.SecureRandom
 import org.mindrot.jbcrypt.BCrypt
+import scala.concurrent.{ Future, ExecutionContext }
 
-trait ClientSecretHasher {
-  def hashClientSecret(info: SecretInfo): SecretInfo
-  def clientSecretMatches(rawSecret: String, info: SecretInfo): Boolean
-}
-
-trait Sha256ClientSecretHasher extends ClientSecretHasher {
-  lazy val hasher = new Sha256SecretHasher {}
-  override def hashClientSecret(info: SecretInfo): SecretInfo = SecretInfo(hasher.hashSecret(info), info.salt)
-  override def clientSecretMatches(rawSecret: String, info: SecretInfo): Boolean = hasher.secretMatches(rawSecret, info)
-}
-
-trait BCryptClientSecretHasher extends ClientSecretHasher {
-  val roundsNo = 10
-  lazy val hasher = new BCryptSecretHasher { override val rounds = roundsNo }
-  override def hashClientSecret(info: SecretInfo): SecretInfo = SecretInfo(hasher.hashSecret(info), info.salt)
-  override def clientSecretMatches(rawSecret: String, info: SecretInfo): Boolean = hasher.secretMatches(rawSecret, info)
-}
+trait ClientSecretHasher extends SecretHasher
+class Sha256ClientSecretHasher extends HasherDelegate(new Sha256Hasher) with ClientSecretHasher
+class BCryptClientSecretHasher(val rounds: Int) extends HasherDelegate(new BCryptHasher(rounds)) with ClientSecretHasher
 
 trait Tenant {
   def name: String
@@ -33,14 +21,14 @@ object TenantImplicits {
 }
 
 trait Oauth2Store {
-  def storeClient(client: Oauth2Client)(implicit tenant: Tenant): Oauth2Client
-  def getClient(clientId: String)(implicit tenant: Tenant): Option[Oauth2Client]
-  def storeAuthzRequest(authzCode: String, authzRequest: AuthzRequest)(implicit tenant: Tenant): AuthzRequest
-  def getAuthzRequest(authzCode: String)(implicit tenant: Tenant): Option[AuthzRequest]
-  def storeTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client)(implicit tenant: Tenant): AccessAndRefreshTokens
-  def getAccessToken(value: String)(implicit tenant: Tenant): Option[AccessToken]
-  def getRefreshToken(value: String)(implicit tenant: Tenant): Option[RefreshToken]
-  def markForRemoval(item: Expirable, key: Option[String])(implicit tenant: Tenant)
+  def storeClient(client: Oauth2Client)(implicit ec: ExecutionContext, tenant: Tenant): Future[Oauth2Client]
+  def getClient(clientId: String)(implicit ec: ExecutionContext, tenant: Tenant): Future[Option[Oauth2Client]]
+  def storeAuthzRequest(authzCode: String, authzRequest: AuthzRequest)(implicit ec: ExecutionContext, tenant: Tenant): Future[AuthzRequest]
+  def getAuthzRequest(authzCode: String)(implicit ec: ExecutionContext, tenant: Tenant): Future[Option[AuthzRequest]]
+  def storeTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client)(implicit ec: ExecutionContext, tenant: Tenant): Future[AccessAndRefreshTokens]
+  def getAccessToken(value: String)(implicit ec: ExecutionContext, tenant: Tenant): Future[Option[AccessToken]]
+  def getRefreshToken(value: String)(implicit ec: ExecutionContext, tenant: Tenant): Future[Option[RefreshToken]]
+  def markForRemoval(item: Expirable, key: Option[String])(implicit ec: ExecutionContext, tenant: Tenant): Future[Unit]
 }
 
 trait Oauth2Config {
@@ -49,19 +37,14 @@ trait Oauth2Config {
   def userApprovalEndpoint: String = "/oauth/approve"
   def authzCodeValiditySeconds: Long = 60
   def evictorIntervalSeconds: Long = 60 * 10 // seconds, every 10 minutes by default
-  //def csrfEnabled = true
 }
 
 trait Logging {
   def debug(message: String)
   def warn(message: String)
-  def logInfo(message: String)
-  def logError(message: String)
-  def logError(message: String, t: Throwable)
-}
-
-trait Dispatcher {
-  def matches(request: OauthRequest): Boolean
+  def info(message: String)
+  def error(message: String)
+  def error(message: String, t: Throwable)
 }
 
 trait ExecutionContextProvider {
@@ -69,90 +52,80 @@ trait ExecutionContextProvider {
   implicit def oauthExecutionContext: ExecutionContext
 }
 
-trait Oauth2Defaults extends Oauth2Config with ExecutionContextProvider with Logging
-
 trait UserStore {
   def getUser(id: UserId)(implicit tenant: Tenant): Option[Oauth2User]
 }
 
-trait UserPasswordHasher {
-  def hashUserSecret(info: SecretInfo): String
-  def userPasswordMatches(rawPassword: String, info: SecretInfo): Boolean
+trait UserPasswordHasher extends SecretHasher
+class BCryptUserPasswordHasher(val rounds: Int) extends HasherDelegate(new BCryptHasher(rounds)) with UserPasswordHasher
+
+trait SecretHasher {
+  def hashSecret(info: SecretInfo): SecretInfo
+  def secretMatches(rawSecret: String, info: SecretInfo): Boolean
 }
 
-trait BCryptUserPasswordHasher extends UserPasswordHasher with BCryptSecretHasher {
-  override def hashUserSecret(info: SecretInfo): String = hashSecret(info)
-  override def userPasswordMatches(rawPassword: String, info: SecretInfo): Boolean = secretMatches(rawPassword, info)
+class HasherDelegate(val hasher: Hasher) extends SecretHasher {
+  override def hashSecret(info: SecretInfo): SecretInfo = SecretInfo(hasher.hashSecret(info), info.salt)
+  override def secretMatches(rawSecret: String, info: SecretInfo): Boolean = hasher.secretMatches(rawSecret, info)
 }
 
-trait AuthzCodeGenerator {
+trait TokenGenerator {
   def generateCode(authzRequest: AuthzRequest): String
   def generateAccessToken(oauthClient: Oauth2Client, scope: Seq[String], userId: Option[UserId]): AccessToken
   def generateRefreshToken(oauthClient: Oauth2Client, scope: Seq[String], userId: Option[UserId]): RefreshToken
 }
 
-trait DefaultAuthzCodeGenerator extends AuthzCodeGenerator {
-  this: ClientSecretHasher =>
+class DefaultTokenGenerator(val hasher: Option[Hasher]) extends TokenGenerator {
   override def generateCode(authzRequest: AuthzRequest) = newToken
   override def generateAccessToken(oauthClient: Oauth2Client, authScope: Seq[String], userId: Option[UserId]) = AccessToken(newToken, oauthClient.clientId, authScope, oauthClient.accessTokenValidity, System.currentTimeMillis, userId)
   override def generateRefreshToken(oauthClient: Oauth2Client, tokenScope: Seq[String], userId: Option[UserId]) = RefreshToken(newToken, oauthClient.clientId, tokenScope, oauthClient.refreshTokenValidity, System.currentTimeMillis, userId)
-  def newToken = hashClientSecret(SecretInfo(UUID.randomUUID().toString)).secret
-}
-
-trait Sha256SecretHasher {
-  def hashSecret(info: SecretInfo): String = sha256(info.salt.getOrElse("") + info.secret)
-  def secretMatches(rawPassword: String, info: SecretInfo): Boolean = constantTimeEquals(sha256(info.salt.getOrElse("") + rawPassword), info.secret)
-  private def constantTimeEquals(a: String, b: String) = {
-    if (a.length != b.length) {
-      false
-    } else {
-      var equal = 0
-      for (i <- 0 until a.length) {
-        equal |= a(i) ^ b(i)
-      }
-      equal == 0
+  def newToken = {
+    val token = UUID.randomUUID().toString
+    hasher match {
+      case None => token
+      case Some(h) => h.hashSecret(SecretInfo(token))
     }
-  }
-}
-
-trait BCryptSecretHasher {
-  private val rnd = new SecureRandom
-  val rounds = 10
-  private def paddedRounds = { rounds.toString.reverse.padTo(2, "0").reverse.mkString }
-  private def prefix = "$2a$" + paddedRounds + "$"
-  def hashSecret(info: SecretInfo): String = BCrypt.hashpw(info.secret, BCrypt.gensalt(rounds, rnd)).substring(7)
-  def secretMatches(rawPassword: String, info: SecretInfo): Boolean = {
-    (for {
-      raw <- Option(rawPassword)
-      enc <- Option(info.secret)
-    } yield {
-      enc.length == (60 - prefix.length) && BCrypt.checkpw(rawPassword, prefix + info.secret)
-    }) getOrElse (false)
   }
 }
 
 /**
  * Allows creation of more delegates in case you don't want the default one
  */
-trait InMemoryStoreDelegate extends Oauth2Store {
+class InMemoryStoreDelegate extends Oauth2Store {
   private val oauthClientStore = scala.collection.mutable.Map[String, Oauth2Client]()
   private val authzCodeStore = scala.collection.mutable.Map[String, AuthzRequest]()
   private val implicitTokenStore = scala.collection.mutable.Map[String, AccessToken]()
   private val accessTokenStore = scala.collection.mutable.Map[String, AccessToken]()
   private val refreshTokenStore = scala.collection.mutable.Map[String, RefreshToken]()
 
-  override def storeClient(client: Oauth2Client)(implicit tenant: Tenant) = { oauthClientStore.put(client.clientId, client); client }
-  override def getClient(clientId: String)(implicit tenant: Tenant) = oauthClientStore.get(clientId)
-  override def storeAuthzRequest(authzCode: String, authzRequest: AuthzRequest)(implicit tenant: Tenant) = { authzCodeStore.put(authzCode, authzRequest); authzRequest }
-  override def getAuthzRequest(authzCode: String)(implicit tenant: Tenant) = authzCodeStore.get(authzCode)
-  override def storeTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client)(implicit tenant: Tenant) = {
+  override def storeClient(client: Oauth2Client)(implicit ec: ExecutionContext, tenant: Tenant) = Future {
+    oauthClientStore.put(client.clientId, client); client
+  }
+  override def getClient(clientId: String)(implicit ec: ExecutionContext, tenant: Tenant) = Future {
+    oauthClientStore.get(clientId)
+  }
+  override def storeAuthzRequest(
+    authzCode: String,
+    authzRequest: AuthzRequest)(implicit ec: ExecutionContext, tenant: Tenant) = Future {
+    authzCodeStore.put(authzCode, authzRequest); authzRequest
+  }
+  override def getAuthzRequest(authzCode: String)(implicit ec: ExecutionContext, tenant: Tenant) = Future {
+    authzCodeStore.get(authzCode)
+  }
+  override def storeTokens(
+    accessAndRefreshTokens: AccessAndRefreshTokens,
+    oauthClient: Oauth2Client)(implicit ec: ExecutionContext, tenant: Tenant) = Future {
     accessTokenStore.put(accessAndRefreshTokens.accessToken.value, accessAndRefreshTokens.accessToken)
     accessAndRefreshTokens.refreshToken.foreach(t => refreshTokenStore.put(t.value, t))
     accessAndRefreshTokens
   }
-  override def getAccessToken(value: String)(implicit tenant: Tenant) = accessTokenStore.find(t => t._1 == value).map(_._2)
-  override def getRefreshToken(value: String)(implicit tenant: Tenant) = refreshTokenStore.find(t => t._1 == value).map(_._2)
-  override def markForRemoval(item: Expirable, key: Option[String])(implicit tenant: Tenant) = {
+  override def getAccessToken(value: String)(implicit ec: ExecutionContext, tenant: Tenant) = Future {
+    accessTokenStore.find(t => t._1 == value).map(_._2)
+  }
+  override def getRefreshToken(value: String)(implicit ec: ExecutionContext, tenant: Tenant) = Future {
+    refreshTokenStore.find(t => t._1 == value).map(_._2)
+  }
+  override def markForRemoval(item: Expirable, key: Option[String])(implicit ec: ExecutionContext, tenant: Tenant) = Future {
     item match {
       case ar: AuthzRequest => key.foreach(authzCodeStore.remove(_))
       case at: AccessToken => accessTokenStore.remove(at.value)
@@ -164,15 +137,21 @@ trait InMemoryStoreDelegate extends Oauth2Store {
 
 private object DefaultInMemoryStoreDelegate extends InMemoryStoreDelegate
 
-trait InMemoryOauth2Store extends Oauth2Store {
-  lazy val delegate: Oauth2Store = DefaultInMemoryStoreDelegate
+class InMemoryOauth2Store extends Oauth2Store {
   import TenantImplicits.DefaultTenant
-  override def storeClient(client: Oauth2Client)(implicit tenant: Tenant) = delegate.storeClient(client)
-  override def getClient(clientId: String)(implicit tenant: Tenant) = delegate.getClient(clientId)
-  override def storeAuthzRequest(authzCode: String, authzRequest: AuthzRequest)(implicit tenant: Tenant) = delegate.storeAuthzRequest(authzCode, authzRequest)
-  override def getAuthzRequest(authzCode: String)(implicit tenant: Tenant) = delegate.getAuthzRequest(authzCode)
-  override def storeTokens(accessAndRefreshTokens: AccessAndRefreshTokens, oauthClient: Oauth2Client)(implicit tenant: Tenant) = delegate.storeTokens(accessAndRefreshTokens, oauthClient)
-  override def getAccessToken(value: String)(implicit tenant: Tenant) = delegate.getAccessToken(value)
-  override def getRefreshToken(value: String)(implicit tenant: Tenant) = delegate.getRefreshToken(value)
-  override def markForRemoval(item: Expirable, key: Option[String])(implicit tenant: Tenant) = delegate.markForRemoval(item, key)
+  lazy val delegate: Oauth2Store = DefaultInMemoryStoreDelegate
+  override def storeClient(client: Oauth2Client)(implicit ec: ExecutionContext, tenant: Tenant) = delegate.storeClient(client)
+  override def getClient(clientId: String)(implicit ec: ExecutionContext, tenant: Tenant) = delegate.getClient(clientId)
+  override def storeAuthzRequest(
+    authzCode: String,
+    authzRequest: AuthzRequest)(implicit ec: ExecutionContext, tenant: Tenant) = delegate.storeAuthzRequest(authzCode, authzRequest)
+  override def getAuthzRequest(authzCode: String)(implicit ec: ExecutionContext, tenant: Tenant) = delegate.getAuthzRequest(authzCode)
+  override def storeTokens(
+    accessAndRefreshTokens: AccessAndRefreshTokens,
+    oauthClient: Oauth2Client)(implicit ec: ExecutionContext, tenant: Tenant) = delegate.storeTokens(accessAndRefreshTokens, oauthClient)
+  override def getAccessToken(value: String)(implicit ec: ExecutionContext, tenant: Tenant) = delegate.getAccessToken(value)
+  override def getRefreshToken(value: String)(implicit ec: ExecutionContext, tenant: Tenant) = delegate.getRefreshToken(value)
+  override def markForRemoval(
+    item: Expirable,
+    key: Option[String])(implicit ec: ExecutionContext, tenant: Tenant) = delegate.markForRemoval(item, key)
 }

@@ -2,7 +2,6 @@ package oauthorize.playapp.grants
 
 import play.api.libs.json._
 import play.api.mvc._
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import oauth2.spec.model._
 import oauth2.spec._
 import oauthorize.model._
@@ -26,11 +25,10 @@ object json {
   implicit def errToJsValue(err: Err) = Json.toJson(err)
 }
 
-trait RenderingUtils extends Controller {
-
-  this: Oauth2Config =>
+class RenderingUtils(config: Oauth2Config) {
 
   import json._
+  import play.api.mvc.Results._
 
   implicit def renderAccessTokenResponse(r: AccessTokenResponse): SimpleResult = Ok(Json.toJson(r))
   implicit def renderErrorAsResult(err: Err): SimpleResult = {
@@ -57,7 +55,7 @@ trait RenderingUtils extends Controller {
         UserApproval.AutoApproveKey -> Seq(a.client.autoapprove.toString))
       val queryString = a.csrfToken.map(t => tmp + (OauthorizeCsrf.TokenName -> Seq(t)))
         .getOrElse(tmp)
-      Redirect(userApprovalEndpoint, queryString, 302)
+      Redirect(config.userApprovalEndpoint, queryString, 302)
     }
     case r: OauthRedirect =>
       if (r.paramsAsUrlFragment)

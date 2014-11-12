@@ -5,7 +5,7 @@ import play.api.test._
 import play.api.test.Helpers._
 import play.api.libs.json._
 import play.api.libs.ws.WS
-import oauthorize.playapp.Oauth
+import oauthorize.sample.Oauth
 import oauthorize.model.Oauth2Client
 import oauthorize.model.SecretInfo
 import oauth2.spec.GrantTypes

@@ -8,59 +8,63 @@ import oauth2.spec.AccessTokenErrors._
 import oauth2.spec._
 import oauth2.spec.model._
 import scala.concurrent.Future
+import scala.concurrent.ExecutionContext
 
-trait ResourceOwnerCredentialsGrant extends Dispatcher {
+class ResourceOwnerCredentialsGrant(
+  val config: Oauth2Config,
+  val oauthStore: Oauth2Store,
+  val clientSecretHasher: ClientSecretHasher,
+  val userStore: UserStore,
+  val userPasswordHasher: UserPasswordHasher,
+  val tokens: TokenGenerator) {
 
-  this: Oauth2Defaults with ClientSecretHasher with Oauth2Store with UserStore with UserPasswordHasher with AuthzCodeGenerator =>
-
-  override def matches(r: OauthRequest) = {
-    val res = r.path == accessTokenEndpoint &&
-      r.method == "POST" &&
-      r.param(Req.grant_type).exists(_ == GrantTypes.password)
-    res
-  }
-
-  def processOwnerCredentialsRequest(req: OauthRequest, clientAuth: Option[ClientAuthentication])(implicit tenant: Tenant): Future[Either[Err, AccessTokenResponse]] = Future {
+  def processOwnerCredentialsRequest(
+    req: OauthRequest,
+    clientAuth: Option[ClientAuthentication])(implicit ctx: ExecutionContext, tenant: Tenant): Future[Either[Err, AccessTokenResponse]] = {
 
     clientAuth match {
-      case None => Left(err(unauthorized_client, "unauthorized client", StatusCodes.Unauthorized))
-      case Some(basicAuth) => getClient(basicAuth.clientId) match {
-        case None => Left(err(invalid_client, "unregistered client", StatusCodes.Unauthorized))
-        case Some(client) if (!clientSecretMatches(basicAuth.clientSecret, client.secretInfo)) => Left(err(invalid_client, "bad credentials", StatusCodes.Unauthorized))
-        case Some(client) => {
+      case None => error(unauthorized_client, "unauthorized client", StatusCodes.Unauthorized)
+      case Some(basicAuth) => oauthStore.getClient(basicAuth.clientId) flatMap {
+        case None => error(invalid_client, "unregistered client", StatusCodes.Unauthorized)
+        case Some(client) if (!clientSecretHasher.secretMatches(basicAuth.clientSecret, client.secretInfo)) =>
+          error(invalid_client, "bad credentials", StatusCodes.Unauthorized)
+        case Some(client) =>
           (req.param(grant_type), req.param(username), req.param(password), req.param(scope)) match {
             case (Some(grantType), Some(userName), Some(pwd), Some(authScope)) => {
               val rq = ResourceOwnerCredentialsRequest(grantType, userName, pwd, authScope.split(ScopeSeparator))
-              processOwnerCredentialsRequest(rq, client)
-            } case _ => Left(err(invalid_request, s"mandatory: $grant_type, $username, $password, $scope"))
+              doProcess(rq, client)
+            } case _ => error(invalid_request, s"mandatory: $grant_type, $username, $password, $scope")
           }
-        }
       }
     }
   }
 
-  private def processOwnerCredentialsRequest(rq: ResourceOwnerCredentialsRequest, oauthClient: Oauth2Client)(implicit tenant: Tenant): Either[Err, AccessTokenResponse] = {
+  private def doProcess(
+    rq: ResourceOwnerCredentialsRequest,
+    oauthClient: Oauth2Client)(implicit ctx: ExecutionContext, tenant: Tenant): Future[Either[Err, AccessTokenResponse]] = {
     import oauth2.spec.AccessTokenErrors._
 
     rq.getError(oauthClient) match {
-      case Some(error) => Left(error)
+      case Some(error) => Future.successful(Left(error))
       case None => {
-        getUser(UserId(rq.username, None)) match {
-          case None => Left(err(invalid_request, "no such user", 401))
-          case Some(usr) if (usr.pwd.map(info => !userPasswordMatches(rq.password, info)).getOrElse(true)) =>
-            Left(err(invalid_request, "bad user credentials", 401))
+        userStore.getUser(UserId(rq.username, None)) match {
+          case None => error(invalid_request, "no such user", 401)
+          case Some(usr) if (usr.pwd.map(info => !userPasswordHasher.secretMatches(rq.password, info)).getOrElse(true)) =>
+            error(invalid_request, "bad user credentials", 401)
           case Some(usr) => {
-            /*
-             * TODO do we care about any previously stored data since he's started
-             * the flow from the beginning, with the authorization code and everything?
-             */
-            val accessToken = generateAccessToken(oauthClient, rq.authScope, Some(usr.id))
+            val accessToken = tokens.generateAccessToken(oauthClient, rq.authScope, Some(usr.id))
             val refreshToken = if (oauthClient.authorizedGrantTypes.contains(GrantTypes.refresh_token)) {
-              Some(generateRefreshToken(oauthClient, rq.authScope, Some(usr.id)))
+              Some(tokens.generateRefreshToken(oauthClient, rq.authScope, Some(usr.id)))
             } else None
-            val stored = storeTokens(AccessAndRefreshTokens(accessToken, refreshToken), oauthClient)
-            val response = AccessTokenResponse(stored.accessToken.value, stored.refreshToken.map(_.value), TokenType.bearer, stored.accessToken.validity, rq.authScope.mkString(ScopeSeparator))
-            Right(response)
+            oauthStore.storeTokens(AccessAndRefreshTokens(accessToken, refreshToken), oauthClient) map { stored =>
+              val response = AccessTokenResponse(
+                stored.accessToken.value,
+                stored.refreshToken.map(_.value),
+                TokenType.bearer,
+                stored.accessToken.validity,
+                rq.authScope.mkString(ScopeSeparator))
+              Right(response)
+            }
           }
         }
       }

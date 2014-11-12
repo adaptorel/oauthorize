@@ -10,6 +10,7 @@ import play.api.libs.Crypto
 import play.filters.csrf.CSRFFilter
 import play.filters.csrf.CSRF.{ TokenProvider, SignedTokenProvider, UnsignedTokenProvider }
 import OauthorizeCsrf._
+import scala.concurrent.Future
 
 /**
  * Adding the CSRF token value to the InitialAuthzApproval, only if the client
@@ -34,7 +35,7 @@ object WithCsrf {
 }
 
 object CsrfCheck {
-  def apply(req: RequestHeader, a: OauthRequest)(block: => OauthResponse): OauthResponse = {
+  def apply(req: RequestHeader, a: OauthRequest)(block: => Future[OauthResponse]): Future[OauthResponse] = {
     /*
      * ONLY perform the check if there's a token in the session which
      * means the filter is enabled
@@ -202,11 +203,11 @@ object OauthorizeCsrfConf {
 
   def c = current.configuration
 
-  def TokenName: String = c.getString("oauthorize.csrf.token.name").getOrElse("oauthorize_csrf_token")
-  def CookieName: Option[String] = c.getString("oauthorize.csrf.cookie.name")
-  def SecureCookie: Boolean = c.getBoolean("oauthorize.csrf.cookie.secure").getOrElse(Session.secure)
-  def PostBodyBuffer: Long = c.getBytes("oauthorize.csrf.body.bufferSize").getOrElse(102400L)
-  def SignTokens: Boolean = c.getBoolean("oauthorize.csrf.sign.tokens").getOrElse(true)
+  lazy val TokenName: String = c.getString("oauthorize.csrf.token.name").getOrElse("oauthorize_csrf_token")
+  lazy val CookieName: Option[String] = c.getString("oauthorize.csrf.cookie.name")
+  lazy val SecureCookie: Boolean = c.getBoolean("oauthorize.csrf.cookie.secure").getOrElse(Session.secure)
+  lazy val PostBodyBuffer: Long = c.getBytes("oauthorize.csrf.body.bufferSize").getOrElse(102400L)
+  lazy val SignTokens: Boolean = c.getBoolean("oauthorize.csrf.sign.tokens").getOrElse(true)
 
   def defaultCreateIfNotFound(request: RequestHeader) = {
     // If the request isn't accepting HTML, then it won't be rendering a form, so there's no point in generating a

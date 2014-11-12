@@ -1,20 +1,28 @@
 package oauthorize.playapp
 
-import securesocial.core._
-import securesocial.core.providers.utils._
-import play.api.mvc.Results.InternalServerError
-import play.api.mvc.RequestHeader
-import play.api.GlobalSettings
-import oauthorize.service._
+import scala.concurrent.Future
+
+import grants.json._
+import oauth2.spec._
+import oauth2provider._
+import oauthorize.grants.AuthzDeserializer
 import oauthorize.model._
-import models._
+import oauthorize.playapp.grants.json._
+import oauthorize.playapp.grants.TenantResolver
+import oauthorize.service._
+import oauthorize.utils._
+import play.api._
+import play.api.libs.json.Json
+import play.api.mvc.RequestHeader
+import play.api.mvc.Results.InternalServerError
+import securesocial.core._
+import securesocial.core.providers.utils.PasswordHasher
+
+class DefaultTenantResolver extends TenantResolver {
+  def resolveTenant(req: RequestHeader): Tenant = TenantImplicits.DefaultTenant
+}
 
 trait Oauth2GlobalErorrHandler extends GlobalSettings {
-  import oauthorize.utils.err
-  import oauth2.spec._
-  import grants.json._
-  import scala.concurrent.Future
-  import play.api.libs.json.Json
   override def onError(request: RequestHeader, ex: Throwable) = {
     val resp = err(AccessTokenErrors.server_error, "internal server error", StatusCodes.InternalServerError)
     Future.successful(InternalServerError(Json.toJson(resp)))
@@ -25,18 +33,28 @@ trait PlayExecutionContextProvider extends ExecutionContextProvider {
   override val oauthExecutionContext = play.api.libs.concurrent.Execution.Implicits.defaultContext
 }
 
-trait PlayLogging extends Logging {
+class PlayOauth2Config extends Oauth2Config {
+  //read stuff from conf if needed
+}
+
+class PlayLogging extends Logging {
   import play.api.Logger
   lazy val oauthorizeLogger = Logger("oauthorize")
 
   override def debug(message: String) = if (oauthorizeLogger.isDebugEnabled) oauthorizeLogger.debug(message)
   override def warn(message: String) = if (oauthorizeLogger.isWarnEnabled) oauthorizeLogger.warn(message)
-  override def logInfo(message: String) = if (oauthorizeLogger.isInfoEnabled) oauthorizeLogger.info(message)
-  override def logError(message: String) = if (oauthorizeLogger.isErrorEnabled) oauthorizeLogger.error(message)
-  override def logError(message: String, t: Throwable) = if (oauthorizeLogger.isErrorEnabled) oauthorizeLogger.error(message, t)
+  override def info(message: String) = if (oauthorizeLogger.isInfoEnabled) oauthorizeLogger.info(message)
+  override def error(message: String) = if (oauthorizeLogger.isErrorEnabled) oauthorizeLogger.error(message)
+  override def error(message: String, t: Throwable) = if (oauthorizeLogger.isErrorEnabled) oauthorizeLogger.error(message, t)
 }
 
-trait Oauth2DefaultsPlay extends Oauth2Defaults with PlayLogging with PlayExecutionContextProvider
+class JsonAuthzDeserializer extends AuthzDeserializer {
+  import play.api.libs.json.Json
+  import oauthorize.model._
+  import oauthorize.playapp.grants.json._
+  override def fromJson(authzRequestJsonString: String) =
+    Json.parse(authzRequestJsonString).asOpt[AuthzRequest]
+}
 
 object SecureTenantImplicits {
   import securesocial.core.SecureTenant
@@ -44,8 +62,8 @@ object SecureTenantImplicits {
   implicit val DefaultSecureTenant: SecureTenant = tenantToSecureTenant(TenantImplicits.DefaultTenant)
 }
 
-trait SecureSocialUserStore extends UserStore {
-  import securesocial.core.{ UserService, IdentityId }
+class SecureSocialUserStore extends UserStore {
+  import securesocial.core._
   import SecureTenantImplicits.DefaultSecureTenant
   override def getUser(id: UserId)(implicit tenant: Tenant) = {
     UserService.find(IdentityId(id.value, id.provider.getOrElse("userpass")))
@@ -56,33 +74,15 @@ trait SecureSocialUserStore extends UserStore {
 import securesocial.core._
 import securesocial.core.providers.utils._
 
-/**
- * The default password hasher based on BCrypt.
- */
 class BCryptPasswordHasher(app: play.api.Application) extends PasswordHasher {
-
+  
   override def id = PasswordHasher.BCryptHasher
 
-  /**
-   * Hashes a password. This implementation does not return the salt because it is not needed
-   * to verify passwords later.  Other implementations might need to return it so it gets saved in the
-   * backing store.
-   *
-   * @param plainPassword the password to hash
-   * @return a PasswordInfo containing the hashed password.
-   */
   def hash(plainPassword: String): PasswordInfo = {
-    PasswordInfo(id, Oauth.hashUserSecret(SecretInfo(plainPassword)))
+    PasswordInfo(id, userPasswordHasher.hashSecret(SecretInfo(plainPassword)).secret)
   }
 
-  /**
-   * Checks if a password matches the hashed version
-   *
-   * @param passwordInfo the password retrieved from the backing store (by means of UserService)
-   * @param suppliedPassword the password supplied by the user trying to log in
-   * @return true if the password matches, false otherwise.
-   */
   def matches(passwordInfo: PasswordInfo, suppliedPassword: String): Boolean = {
-    Oauth.userPasswordMatches(suppliedPassword, SecretInfo(passwordInfo.password))
+    userPasswordHasher.secretMatches(suppliedPassword, SecretInfo(passwordInfo.password))
   }
 }

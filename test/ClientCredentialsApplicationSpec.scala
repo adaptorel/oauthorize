@@ -14,7 +14,7 @@ import org.apache.commons.codec.binary.Base64
 import java.net.URLDecoder
 import java.net.URLEncoder
 import play.api.Play
-import oauthorize.playapp.Oauth
+import oauthorize.sample.Oauth
 import play.api.libs.ws._
 import com.ning.http.client.Realm
 import play.api.libs.ws.WS.WSRequestHolder
