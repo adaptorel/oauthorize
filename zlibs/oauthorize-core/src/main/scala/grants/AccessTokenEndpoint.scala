@@ -30,7 +30,7 @@ class AccessTokenEndpoint(
           (req.param(grant_type), req.param(code), req.param(redirect_uri)) match {
             case (Some(grantType), Some(authzCode), Some(redirectUri)) => {
               val atRequest = AccessTokenRequest(grantType, authzCode, redirectUri, req.param(client_id))
-              processAccessTokenRequest(atRequest, client)
+              doProcess(atRequest, client)
             } case _ => error(invalid_request, s"mandatory: $grant_type, $code, $redirect_uri")
           }
         }
@@ -38,7 +38,7 @@ class AccessTokenEndpoint(
     }
   }
 
-  private def processAccessTokenRequest(
+  private def doProcess(
     accessTokenRequest: AccessTokenRequest,
     oauthClient: Oauth2Client)(implicit ctx: ExecutionContext): Future[Either[Err, AccessTokenResponse]] = {
     import oauth2.spec.AccessTokenErrors._
