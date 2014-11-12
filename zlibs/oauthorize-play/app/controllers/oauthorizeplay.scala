@@ -31,9 +31,9 @@ trait PlayLogging extends Logging {
 
   override def debug(message: String) = if (oauthorizeLogger.isDebugEnabled) oauthorizeLogger.debug(message)
   override def warn(message: String) = if (oauthorizeLogger.isWarnEnabled) oauthorizeLogger.warn(message)
-  override def logInfo(message: String) = if (oauthorizeLogger.isInfoEnabled) oauthorizeLogger.info(message)
-  override def logError(message: String) = if (oauthorizeLogger.isErrorEnabled) oauthorizeLogger.error(message)
-  override def logError(message: String, t: Throwable) = if (oauthorizeLogger.isErrorEnabled) oauthorizeLogger.error(message, t)
+  override def info(message: String) = if (oauthorizeLogger.isInfoEnabled) oauthorizeLogger.info(message)
+  override def error(message: String) = if (oauthorizeLogger.isErrorEnabled) oauthorizeLogger.error(message)
+  override def error(message: String, t: Throwable) = if (oauthorizeLogger.isErrorEnabled) oauthorizeLogger.error(message, t)
 }
 
 trait Oauth2DefaultsPlay extends Oauth2Defaults with PlayLogging with PlayExecutionContextProvider

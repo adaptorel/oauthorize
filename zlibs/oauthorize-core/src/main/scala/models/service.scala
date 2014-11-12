@@ -33,9 +33,9 @@ trait Oauth2Config {
 trait Logging {
   def debug(message: String)
   def warn(message: String)
-  def logInfo(message: String)
-  def logError(message: String)
-  def logError(message: String, t: Throwable)
+  def info(message: String)
+  def error(message: String)
+  def error(message: String, t: Throwable)
 }
 
 trait Dispatcher {

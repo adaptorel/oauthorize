@@ -7,7 +7,7 @@ import types._
 
 /**
  * Validity expressed in seconds
- * Created is timesptamp milliseconds
+ * Created is time stamp milliseconds
  */
 sealed trait Expirable {
   def validity: Long

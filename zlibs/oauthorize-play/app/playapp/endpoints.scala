@@ -24,7 +24,7 @@ class Oauth2RequestValidatorPlay(
   override def matches(r: OauthRequest) = validator.matches(r)
   
   override def bodyProcessor(a: OauthRequest, req: RequestHeader)(implicit ctx: ExecutionContext) = {
-    logger.logInfo(s"proceed with global validation at: $a")
+    logger.info(s"proceed with global validation at: $a")
     validator.getErrors(a, ctx).map(maybeErr => maybeErr.map(renderingImplicits.renderErrorAsResult(_)))
   }
 }
@@ -143,7 +143,7 @@ class UserApprovalPlay(
   override def matches(r: OauthRequest) = processor.matches(r)
 
   override def bodyProcessor(a: OauthRequest, req: RequestHeader)(implicit ctx: ExecutionContext) = {
-    logger.logInfo(s"processing user approval: $a");
+    logger.info(s"processing user approval: $a");
     def lazyResult(u: Oauth2User) = {
       if ("POST" == a.method || a.param(UserApproval.AutoApproveKey).exists(_ == "true")) {
         lazyProcessApprove(a, u, req)
@@ -171,7 +171,7 @@ class UserApprovalPlay(
     } yield {
       buildUserApprovalPage(authzReq, authzRequestJsonString, client, req)
     }) getOrElse ({
-      logger.logError("Fatal error when initiating user approval after user authentication! The authorization code, authorization request or the client weren't found. Shouldn't have got here EVER, we're controlling the whole flow!")
+      logger.error("Fatal error when initiating user approval after user authentication! The authorization code, authorization request or the client weren't found. Shouldn't have got here EVER, we're controlling the whole flow!")
       err(server_error, 500)
     })
   }
