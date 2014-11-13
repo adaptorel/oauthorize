@@ -53,7 +53,7 @@ trait ExecutionContextProvider {
 }
 
 trait UserStore {
-  def getUser(id: UserId)(implicit tenant: Tenant): Option[Oauth2User]
+  def getUser(id: UserId)(implicit ec: ExecutionContext, tenant: Tenant): Future[Option[Oauth2User]]
 }
 
 trait UserPasswordHasher extends SecretHasher

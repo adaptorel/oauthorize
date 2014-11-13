@@ -17,6 +17,7 @@ import play.api.mvc.RequestHeader
 import play.api.mvc.Results.InternalServerError
 import securesocial.core._
 import securesocial.core.providers.utils.PasswordHasher
+import scala.concurrent.ExecutionContext
 
 class DefaultTenantResolver extends TenantResolver {
   def resolveTenant(req: RequestHeader): Tenant = TenantImplicits.DefaultTenant
@@ -65,7 +66,7 @@ object SecureTenantImplicits {
 class SecureSocialUserStore extends UserStore {
   import securesocial.core._
   import SecureTenantImplicits.DefaultSecureTenant
-  override def getUser(id: UserId)(implicit tenant: Tenant) = {
+  override def getUser(id: UserId)(implicit ec: ExecutionContext, tenant: Tenant) = Future {
     UserService.find(IdentityId(id.value, id.provider.getOrElse("userpass")))
       .map(u => Oauth2User(UserId(u.identityId.userId, Option(u.identityId.providerId)), u.passwordInfo.map(i => SecretInfo(i.password, i.salt))))
   }

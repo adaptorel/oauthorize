@@ -2,7 +2,7 @@ import play.Project._
 
 name := "oauthorize-play-app"
 
-version in ThisBuild := "0.3.9"
+version in ThisBuild := "0.7.0-mt"
 
 organization in ThisBuild := "com.oauthorize"
 

@@ -47,7 +47,7 @@ class ResourceOwnerCredentialsGrant(
     rq.getError(oauthClient) match {
       case Some(error) => Future.successful(Left(error))
       case None => {
-        userStore.getUser(UserId(rq.username, None)) match {
+        userStore.getUser(UserId(rq.username, None)) flatMap {
           case None => error(invalid_request, "no such user", 401)
           case Some(usr) if (usr.pwd.map(info => !userPasswordHasher.secretMatches(rq.password, info)).getOrElse(true)) =>
             error(invalid_request, "bad user credentials", 401)
