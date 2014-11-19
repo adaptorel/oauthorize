@@ -3,7 +3,7 @@ import play.Project.{ filters, playScalaSettings }
 
 object Build extends Build {
   lazy val allSettings = Seq(
-    version := "0.2.10",
+    version := "0.7.0.1-mt",
     organization := "com.oauthorize",
     scalaVersion := "2.10.4",
     publishMavenStyle := true,
