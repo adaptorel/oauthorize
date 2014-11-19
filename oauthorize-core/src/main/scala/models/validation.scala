@@ -3,6 +3,7 @@ package oauthorize.model
 import oauthorize.utils._
 import oauth2.spec.Req._
 import oauth2.spec._
+import scala.language.reflectiveCalls
 
 object ValidationUtils {
   def errForEmpty(value: { def isEmpty: Boolean }, error: Err) = {

@@ -6,6 +6,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import oauthorize.service.TenantImplicits
+import scala.language.postfixOps
 
 object Oauth {
 
