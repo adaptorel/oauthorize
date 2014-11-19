@@ -3,7 +3,7 @@ import play.Project.{ filters, playScalaSettings }
 
 object Build extends Build {
   lazy val allSettings = Seq(
-    version := "0.2.10",
+    version := "0.7.0",
     organization := "com.oauthorize",
     scalaVersion := "2.10.4",
     publishMavenStyle := true,
@@ -14,7 +14,11 @@ object Build extends Build {
       "-Yno-adapted-args",
       "-language:implicitConversions",
       "-language:higherKinds"
-    )
+    ),
+   publishTo := {
+     val localPublishRepo = "/Users/dorel/Work/_bitbucket_maven"
+     Some(Resolver.file("releases", new File(localPublishRepo)))
+   }
   )
 
   lazy val root = Project(
