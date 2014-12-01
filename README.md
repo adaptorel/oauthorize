@@ -44,7 +44,7 @@ Why on earh would you write an Oauth2 authorization server?
 decided to switch to Java Config and all this new shiny stuff and suddenly 
 we have found ourselves not being able to understand, debug and ultimately 
 customize/tweak Spring Security Oauth2 to our usecase. The XML based version was 
-running lik a charm but all the Spring ecosystem heads away from it so all 
+running like a charm but all the Spring ecosystem heads away from it so all 
 docs and samples we could use were outdated/not supported anymore.
 
 Also there are two other notable Oauth2 authorization server impls out there, one  
