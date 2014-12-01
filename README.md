@@ -1,9 +1,7 @@
 oauthorize [![Build Status](https://travis-ci.org/adaptorel/oauthorize.svg?branch=master)](https://travis-ci.org/adaptorel/oauthorize)
 ==========
 
-An Oauth2 authorization server.
-
-It supports all Oauth2 grant types and aims at adding OpenId Connect on top.
+An Oauth2 authorization server. It supports all Oauth2 grant types.
 
 ### Teaser
 
@@ -37,3 +35,23 @@ like Guice for DI. Should be straightforward with the current design, anyways.
 
 * Documentation (hard coughing here)
 * A Spray based impl
+* OpenId Connect
+
+### Why
+
+Why on earh would you write an Oauth2 authorization server?
+'Cause after 10+ years of Java and Spring framework development, Spring Oauth2 
+decided to switch to Java Config and all this new shiny stuff and suddenly 
+we have found ourselves not being able to understand, debug and ultimately 
+customize/tweak Spring Security Oauth2 to our usecase. The XML based version was 
+running lik a charm but all the Spring ecosystem heads away from it so all 
+docs and samples we could use were outdated/not supported anymore.
+
+Also there are two other notable Oauth2 authorization server impls out there, one  
+also based on Spring Framework and another one just not as open as we'd like aka
+only the code is available, if you whish to do anything else with it you have to head
+towards the paid version. (Insert links here, I will, it's just months since I evaluated
+them, I need to look into them again).
+
+Thus, oauthorize was born, after 2 weekends of coding a prototype for the 
+client_credentials Oauth2 flow :-) 
