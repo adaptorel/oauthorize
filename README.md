@@ -18,6 +18,8 @@ class Oauth2Filters extends WithFilters(
   UserApprovalEndpoint) with Oauth2GlobalErorrHandler
 ```
 
+See more here https://github.com/adaptorel/oauthorize/blob/master/oauthorize-play/app/controllers/Oauthorize.scala
+
 ### Notes
 
 * The initial version is built on Play but one of the design goals was to completely
